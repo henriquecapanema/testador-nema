@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="pt-br"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>nemabot</title>
+<style>
+/*@CSS*/
+</style></head><body>
+<header class="top">
+  <div class="brand">nemabot <span class="badge pri" id="rbadge">J2</span></div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="ctl">Controle</button>
+    <button class="tab" data-tab="tst">Testes<span class="tdot live" id="tstdot"></span></button>
+    <button class="tab" data-tab="wire">Ligações</button>
+    <button class="tab" data-tab="sys">Sistema<span class="tdot" id="sysdot"></span></button>
+  </nav>
+  <div class="hright">
+    <button class="badge lim" id="limBadge" hidden title="Batentes virtuais ativos · clique para configurar">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1.5 1v10M10.5 1v10M4 6h4"/></svg><span id="limTxt">−120°…120°</span></button>
+    <button class="btn sm ena" id="enaBtn" hidden></button>
+    <div class="pill" id="pill"><span class="pdot" id="dot"></span><span class="txt" id="conn">Conectando…</span></div>
+    <button class="stop" id="stop" title="Parar com rampa (Esc ou espaço)">
+      <svg width="12" height="12" viewBox="0 0 12 12"><rect width="12" height="12" rx="2" fill="currentColor"/></svg>PARAR<kbd>ESC</kbd>
+    </button>
+  </div>
+</header>
+
+<!-- ================= CONTROLE / TESTES (mesma coluna direita) ================= -->
+<main id="tab-main"><div class="grid">
+<div class="col">
+
+ <!-- ---------- deck Controle ---------- -->
+ <div class="deck" id="deck-ctl">
+  <section class="card">
+    <div class="ch"><span class="ct">Telemetria</span>
+      <button class="btn sm" id="zero" title="Define a posição atual como 0°">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="5"/><path d="M8 1v3M8 12v3M1 8h3M12 8h3"/></svg>Zerar 0°</button>
+    </div>
+    <div class="tele">
+      <svg id="dial" viewBox="-100 -100 200 200" width="148" height="148">
+        <circle r="97" fill="#09090B" stroke="#24242F" stroke-width="1.5"/>
+        <circle r="90" fill="#0E0E12"/>
+        <g id="dticks"></g>
+        <path id="dlim" fill="none" stroke="#2A0C14" stroke-opacity=".9" stroke-width="18" d=""/>
+        <path id="dlimE" fill="none" stroke="#FB7185" stroke-width="2" stroke-linecap="round" d=""/>
+        <circle r="78" fill="none" stroke="#1E1E28" stroke-width="6"/>
+        <path id="dfull" fill="none" stroke="#93A5FF" stroke-opacity=".22" stroke-width="6" d=""/>
+        <path id="darc" fill="none" stroke="#93A5FF" stroke-opacity=".7" stroke-width="6" stroke-linecap="round" d=""/>
+        <text id="dturn" y="38" text-anchor="middle" font-size="12" fill="#9898A8"></text>
+        <g id="dtgt" class="rot"><path d="M0,-80 L-6,-92 L6,-92 Z" fill="#FCD34D" stroke="#09090B" stroke-width="1.5"/></g>
+        <g id="dneedle" class="rot"><path d="M-4.5,14 L4.5,14 L1.4,-72 L-1.4,-72 Z" fill="#93A5FF"/><circle cy="-72" r="1.4" fill="#93A5FF"/></g>
+        <circle r="9" fill="#F4F4F6"/><circle r="3.5" fill="#111115"/>
+      </svg>
+      <div style="min-width:0">
+        <div class="read"><span id="pos">0.0</span><small>°</small></div>
+        <dl class="kv">
+          <dt><span class="sw-tri"></span>Alvo</dt><dd id="tgt">0.0°</dd>
+          <dt><span class="sw-line" style="background:#67E8F9"></span>Velocidade</dt><dd id="spd">0.0 rpm</dd>
+          <dt><span class="sw-line" style="background:#C4B5FD"></span>Aceleração</dt><dd id="accNow">0 p/s²</dd>
+        </dl>
+        <div class="moderow"><span class="badge" id="mode">parado</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="ch"><span class="ct">Movimento</span>
+      <div class="seg" id="mseg"><button class="active" data-m="abs">Absoluto</button><button data-m="rel">Relativo</button><button data-m="jog">Jog</button></div>
+    </div>
+    <div id="m-abs" class="row" style="flex-wrap:nowrap">
+      <label class="field" style="flex:1"><input type="number" id="ga" value="90" step="any"><span class="unit">°</span></label>
+      <button class="btn pri" id="goto" style="min-width:84px">Ir</button>
+    </div>
+    <div id="m-rel" hidden>
+      <label class="field"><input type="number" id="ra" value="45" step="any"><span class="unit">° por clique</span></label>
+      <div class="row" style="flex-wrap:nowrap;margin-top:10px">
+        <button class="btn" id="rm" style="flex:1">− Girar</button>
+        <button class="btn" id="rp" style="flex:1">+ Girar</button>
+      </div>
+    </div>
+    <div id="m-jog" hidden>
+      <div class="row" style="flex-wrap:nowrap">
+        <button class="btn jog" id="jogL">◀ Segurar</button>
+        <button class="btn jog" id="jogR">Segurar ▶</button>
+      </div>
+      <div class="row" style="justify-content:space-between;margin-top:10px">
+        <span class="sub">Escala da velocidade</span>
+        <div class="seg" id="jseg"><button data-s="0.2">Fino 20%</button><button class="active" data-s="1">Normal 100%</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="ch"><span class="ct">Parâmetros</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div><span class="lbl">Velocidade <span class="sub" id="rpmMax">máx. 30</span></span>
+        <label class="field" id="f-rpm"><input type="number" id="rpm" value="5" step="0.5" min="0.1"><span class="unit" id="rpmUnit">rpm</span></label></div>
+      <div><span class="lbl">Aceleração</span>
+        <label class="field" id="f-acc"><input type="number" id="acc" value="4000" step="500" min="100"><span class="unit">p/s²</span></label></div>
+    </div>
+    <div class="row" style="justify-content:space-between;margin-top:12px">
+      <span class="lbl" style="margin:0;display:flex;align-items:center;gap:6px">Rampa <span class="q" tabindex="0" data-tip="Trapezoidal: acelera e freia com aceleração constante.&#10;Curva S: a aceleração cresce e diminui aos poucos (limitada pelo jerk). Mais suave, um pouco mais lenta.">?</span></span>
+      <div class="seg" id="rseg"><button class="active" data-r="0">Trapezoidal</button><button data-r="1">Curva S</button></div>
+    </div>
+    <div id="jerkRow" hidden style="margin-top:10px">
+      <label class="field" id="f-jerk"><input type="number" id="jerk" value="40000" step="1000" min="1000"><span class="unit">jerk p/s³</span></label>
+    </div>
+  </section>
+ </div>
+
+ <!-- ---------- deck Testes ---------- -->
+ <div class="deck" id="deck-tst" hidden>
+  <section class="card">
+    <div class="ch"><span class="ct">Rotina</span></div>
+    <label class="field sel"><select id="tsel">
+      <option value="loop">Endurance (loop)</option>
+      <option value="sweep">Limite de rpm</option>
+      <option value="accsweep">Limite de aceleração</option>
+      <option value="resonance">Ressonância</option>
+      <option value="backlash">Folga (backlash)</option>
+      <option value="drift">Repetibilidade</option>
+      <option value="stiction">Atrito estático</option>
+      <option value="waypoints">Trajetória (waypoints)</option>
+    </select></label>
+    <div class="tinfo" id="tdesc"></div>
+    <div class="tfields" id="tfields"></div>
+    <div id="wpEd" hidden>
+      <div class="wphead"><span>Ângulo</span><span>rpm</span><span>Pausa</span><span></span></div>
+      <div id="wpRows"></div>
+      <div class="row" style="justify-content:space-between;margin-top:10px">
+        <button class="btn sm" id="wpAdd">+ Adicionar ponto</button>
+        <label class="switch"><input type="checkbox" id="wpLoop"><span class="trk"></span>Repetir</label>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="ch"><span class="ct">Execução</span><span class="sub" id="tprog"></span></div>
+    <div class="tnow" id="tnow" hidden>
+      <div class="sub" id="tstep">Degrau 1 de 10</div>
+      <div class="tval" id="tval">1.000 p/s²</div>
+      <div class="tlive">
+        <div><span>velocidade</span><b id="tvNow">0,0</b><em>rpm</em></div>
+        <div><span title="pico de velocidade neste degrau">pico</span><b id="tvPk">0,0</b><em>rpm</em></div>
+        <div><span>aceleração</span><b class="acc" id="taNow">0</b><em>p/s²</em></div>
+      </div>
+      <div class="tbarw" id="tbarw"><div class="tbar" id="tbar"></div></div>
+    </div>
+    <button class="btn pri block big" id="tgo" title="Atalho: I">Iniciar teste<kbd class="k">I</kbd></button>
+    <button class="btn danger block" id="tmark" style="margin-top:10px" disabled title="Para o motor, congela o gráfico e registra o ponto">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 2v12M3 3h8l-2 3 2 3H3"/></svg>Marcar falha<kbd class="k">M</kbd></button>
+  </section>
+
+  <section class="card">
+    <div class="ch"><span class="ct">Gravações <span class="q" tabindex="0" data-tip="Cada teste fica gravado. Ao iniciar um teste, a execução anterior da mesma rotina aparece em cinza por baixo do gráfico, alinhada pelo início, com as falhas marcadas nela. Use Comparar para escolher outra.">?</span></span></div>
+    <div id="runs" class="runs"></div>
+  </section>
+
+  <section class="card">
+    <div class="ch"><span class="ct">Marcações</span>
+      <div class="row" style="gap:6px"><button class="btn sm" id="rcopy">Copiar</button><button class="btn sm" id="rclear">Limpar</button></div></div>
+    <div id="tres" class="tres"><div class="sub" style="padding:12px">Nenhuma marcação ainda. Durante um teste, aperte M quando o motor falhar.</div></div>
+  </section>
+ </div>
+
+</div>
+<div class="col">
+
+  <section class="card" id="chart">
+    <div class="ch"><span class="ct">Movimento</span>
+      <div class="row" style="gap:6px">
+        <label class="field sel" style="height:30px;width:86px"><select id="win"><option value="5">5 s</option><option value="10" selected>10 s</option><option value="30">30 s</option><option value="60">60 s</option></select></label>
+        <button class="btn sm" id="pause">Pausar</button>
+        <button class="btn sm" id="reset" title="Enquadra o último teste inteiro">Ajustar</button>
+        <button class="btn sm" id="clear">Limpar</button>
+        <button class="btn sm" id="csv">CSV</button>
+        <button class="btn sm icon" id="help" title="Atalhos do gráfico">?</button>
+      </div>
+    </div>
+    <div class="pop" id="pop" hidden>
+      <div><b>Arrastar retângulo</b>ampliar a região</div>
+      <div><b>Rodinha / pinça</b>tempo</div>
+      <div><b>Shift + rodinha</b>altura (ou rodinha no eixo)</div>
+      <div><b>Dois dedos pro lado</b>andar no tempo</div>
+      <div><b>Duplo clique / Ajustar</b>enquadra o último teste inteiro</div>
+      <div><b>Continuar</b>volta ao tempo real</div>
+      <div><b>I</b>iniciar / parar o teste (aba Testes)</div>
+      <div><b>M</b>marcar falha (durante um teste)</div>
+    </div>
+    <div class="ctitle"><span id="ptitle">Posição (graus na saída)</span>
+      <span class="leg"><i style="border-top:2px solid #93A5FF"></i>posição</span>
+      <span class="leg"><i style="border-top:2px dashed #FCD34D"></i>alvo</span>
+      <span class="leg ghost" id="ghostLeg" hidden><i style="border-top:2px solid rgba(152,152,168,.6)"></i>comparando com <b id="ghostName">anterior</b><button class="gx" id="ghostX" title="Parar de comparar">×</button></span></div>
+    <canvas id="cp" style="height:340px"></canvas>
+    <div class="ctitle" style="margin-top:8px" id="vtitle">Velocidade (rpm na saída)</div>
+    <canvas id="cv" style="height:170px"></canvas>
+    <div id="tip"></div>
+  </section>
+
+  <section class="card">
+    <div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:12px">
+      <span class="slv"><span id="slv">0</span>°</span>
+      <div class="chips">
+        <button class="chip" data-g="-180">-180°</button><button class="chip" data-g="-90">-90°</button><button class="chip" data-g="-45">-45°</button>
+        <button class="chip" data-g="0">0°</button><button class="chip" data-g="45">45°</button><button class="chip" data-g="90">90°</button><button class="chip" data-g="180">180°</button>
+      </div>
+      <label class="switch" title="Desligado: o motor só vai quando você solta a barra"><input type="checkbox" id="live" checked><span class="trk"></span>Ao vivo</label>
+    </div>
+    <input type="range" id="sl" min="-360" max="360" step="1" value="0">
+    <div class="ticks"><span>-360</span><span>-270</span><span>-180</span><span>-90</span><span>0</span><span>90</span><span>180</span><span>270</span><span>360</span></div>
+  </section>
+
+  <section class="card" id="logcard">
+    <div class="lhead" id="lhead">
+      <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3l5 5-5 5"/></svg>
+      <span class="ct">Log</span>
+      <span id="logPrev"></span>
+      <button class="btn sm" id="lcopy">Copiar</button>
+      <button class="btn sm" id="lclear">Limpar</button>
+    </div>
+    <div id="logwrap"><div><div id="log"></div></div></div>
+  </section>
+
+</div>
+</div></main>
+
+<!-- ================= LIGAÇÕES ================= -->
+<main id="tab-wire" hidden><div class="wgrid">
+  <section class="card">
+    <div class="ch"><span class="ct">Ligações · <span id="wname">TB6600</span></span>
+      <div class="seg" id="dseg"><button data-d="tb6600">TB6600</button><button data-d="tmc2209">TMC2209</button></div></div>
+    <div class="wdiag" id="wdiag"></div><div class="wtip" id="wtip" hidden></div>
+    <div class="wtable" id="wtable"></div>
+  </section>
+  <div class="col">
+    <section class="card" id="cfg-tb">
+      <div class="ch"><span class="ct">Chaves DIP</span><span class="sub">ON é para baixo neste driver</span></div>
+      <div class="fgrid" style="margin-top:0;grid-template-columns:1fr">
+        <div><span class="lbl">Micropasso</span><label class="field sel"><select id="tbMs"></select></label></div>
+        <div><span class="lbl">Corrente</span><label class="field sel"><select id="tbCur"></select></label></div>
+      </div>
+      <div class="diprow" id="dipRow"></div>
+      <div class="sub" id="tbInfo" style="margin-top:10px;line-height:1.5"></div>
+      <div class="sub" style="margin-top:6px">17HS4401 (1,7 A): use <b style="color:var(--text-secondary)">1,5 A</b>, que dá pico de 1,7 A. As cores das bobinas são as do seu cabo na foto; confira com um multímetro (cada par tem poucos ohms entre si).</div>
+    </section>
+    <section class="card" id="cfg-tmc" hidden>
+      <div class="ch"><span class="ct">TMC2209</span><span class="sub">MS1/MS2 e Vref</span></div>
+      <div class="fgrid" style="margin-top:0;grid-template-columns:1fr">
+        <div><span class="lbl">Micropasso <span class="sub">interpola para 1/256</span></span><label class="field sel"><select id="tmcMs"><option value="8">1/8</option><option value="16">1/16</option><option value="32">1/32</option><option value="64">1/64</option></select></label></div>
+        <div><span class="lbl">Corrente RMS</span><label class="field"><input type="number" id="irms" step="0.05" min="0.1" max="2"><span class="unit">A</span></label></div>
+      </div>
+      <div class="sub" id="tmcInfo" style="margin-top:10px;line-height:1.6"></div>
+      <div class="sub" style="margin-top:6px">Vref pela fórmula da BTT v1.3 (Vref = I × 1,41). Confira no manual da sua placa antes de ajustar o trimpot.</div>
+    </section>
+    <section class="card">
+      <div class="ch"><span class="ct">Micropasso no ESP32</span></div>
+      <div class="row" id="msSync"></div>
+      <div class="sub" style="margin-top:10px;line-height:1.5">Os sinais do ESP32 são de 3,3 V. A maioria dos TB6600 aceita; se ele perder passos sem carga, use um conversor de nível para 5 V. Ligue sempre o GND da fonte, do driver e do ESP32 juntos.</div>
+    </section>
+  </div>
+</div></main>
+
+<!-- ================= SISTEMA ================= -->
+<main id="tab-sys" hidden><div class="sys">
+
+  <section class="card">
+    <div class="ch"><span class="ct">Wi-Fi</span><span class="badge" id="netBadge">…</span></div>
+    <div class="netinfo" id="netinfo">…</div>
+    <div class="row" style="margin-top:14px"><button class="btn" id="scan">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>Procurar redes</button></div>
+    <div id="netlist" hidden></div>
+    <div class="fgrid">
+      <div><span class="lbl">Rede</span><label class="field"><input type="text" id="ssid" placeholder="nome da rede" autocomplete="off" spellcheck="false"></label></div>
+      <div><span class="lbl">Senha</span><div class="field"><input type="password" id="pass" placeholder="senha" autocomplete="off"><button class="eye" type="button" data-for="pass" title="Mostrar senha"></button></div></div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn pri" id="save">Salvar e reiniciar</button>
+      <button class="btn danger" id="forget">Esquecer rede</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="ch"><span class="ct">Motor</span><span class="badge" id="mcur">…</span></div>
+    <div class="fgrid" style="margin-top:0">
+      <div><span class="lbl" style="display:flex;align-items:center;gap:6px">Micropasso <span class="q" tabindex="0" data-tip="Deve coincidir com as chaves físicas S1–S3 do driver: este campo não muda o driver, só informa ao ESP32.&#10;Ao aplicar, o motor para e a posição volta a 0°.">?</span></span>
+        <label class="field sel"><select id="mms"><option value="1">Passo cheio</option><option value="2">1/2</option><option value="4">1/4</option><option value="8">1/8</option><option value="16">1/16</option><option value="32">1/32</option><option value="64">1/64</option><option value="128">1/128</option><option value="256">1/256</option></select></label></div>
+      <div><span class="lbl">Redução <span class="sub">1 = motor solto</span></span>
+        <label class="field"><input type="number" id="mratio" value="20" step="any" min="0.1"><span class="unit">:1</span></label></div>
+    </div>
+    <div class="row" style="margin-top:14px"><button class="btn pri" id="msave">Aplicar</button></div>
+  </section>
+
+  <section class="card" id="safety">
+    <div class="ch"><span class="ct">Segurança e hardware</span></div>
+    <div class="srow"><div><div>Batentes virtuais</div><div class="sub">o motor nunca passa destes ângulos</div></div>
+      <label class="switch"><input type="checkbox" id="limEn"><span class="trk"></span>Ativar</label></div>
+    <div class="fgrid" style="margin-top:10px">
+      <div><span class="lbl">Mínimo</span><label class="field"><input type="number" id="limMin" value="-120" step="any"><span class="unit">°</span></label></div>
+      <div><span class="lbl">Máximo</span><label class="field"><input type="number" id="limMax" value="120" step="any"><span class="unit">°</span></label></div>
+    </div>
+    <hr class="sep">
+    <div class="srow"><div><div style="display:flex;align-items:center;gap:6px">Controle de torque (ENA) <span class="q" tabindex="0" data-tip="TB6600: ENA+ no GPIO 27 e ENA− no GND.&#10;Com a lógica invertida (padrão), LOW = motor com torque e HIGH = solto.&#10;Soltar o torque sempre para o motor com rampa antes.">?</span></div><div class="sub">pino GPIO 27</div></div>
+      <label class="switch"><input type="checkbox" id="enaUse"><span class="trk"></span>Usar</label></div>
+    <div class="srow" style="margin-top:10px"><div class="sub">Lógica invertida (ativo em LOW)</div>
+      <label class="switch"><input type="checkbox" id="enaInv" checked><span class="trk"></span></label></div>
+    <div class="row" style="margin-top:14px"><button class="btn pri" id="safeSave">Salvar</button></div>
+  </section>
+
+  <section class="card">
+    <div class="ch"><span class="ct">Atualização pelo Wi-Fi <span class="q" tabindex="0" data-tip="No Arduino IDE: Ferramentas → Porta → “nemabot at …” (porta de rede) e Upload normal. O IDE pede esta senha.&#10;Partition Scheme precisa ter OTA (o padrão serve).&#10;Na primeira vez o macOS pergunta se permite conexões: aceite.">?</span></span><span class="badge" id="otaBadge">…</span></div>
+    <div class="row"><span class="sub">Endereço</span><button class="copy" id="otaAddr" title="Copiar">nemabot.local</button></div>
+    <div class="row" style="margin-top:14px;flex-wrap:nowrap">
+      <div class="field" style="flex:1"><input type="password" id="otap" placeholder="nova senha do OTA (mín. 6)" autocomplete="new-password"><button class="eye" type="button" data-for="otap" title="Mostrar senha"></button></div>
+      <button class="btn" id="otas">Salvar e reiniciar</button>
+    </div>
+  </section>
+
+</div></main>
+
+<div id="toasts"></div>
+<script>
+/*@JS*/
+</script></body></html>
