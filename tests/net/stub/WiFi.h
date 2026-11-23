@@ -23,24 +23,27 @@ struct WiFiT{String SSID(){return "teste";} String SSID(uint8_t){return "";} int
 extern WiFiT WiFi;
 
 class WiFiClient {
-  std::shared_ptr<int> fd;
+  std::shared_ptr<int> sp;
 public:
-  WiFiClient(){} explicit WiFiClient(int f):fd(std::make_shared<int>(f)){}
-  uint8_t connected(){
-    if(!fd||*fd<0)return 0;
-    char c;ssize_t r=recv(*fd,&c,1,MSG_PEEK|MSG_DONTWAIT);
+  WiFiClient(){} explicit WiFiClient(int f):sp(std::make_shared<int>(f)){}
+  uint8_t connected(){ return 0;   // como no ESP32 com errno sobrando: o firmware não pode depender disto
+  }
+  uint8_t connectedReal(){
+    if(!sp||*sp<0)return 0;
+    char c;ssize_t r=recv(*sp,&c,1,MSG_PEEK|MSG_DONTWAIT);
     return r>0||(r<0&&(errno==EAGAIN||errno==EWOULDBLOCK));
   }
-  int available(){if(!fd||*fd<0)return 0;int n=0;ioctl(*fd,FIONREAD,&n);return n;}
-  int read(uint8_t* b,size_t n){if(!fd||*fd<0)return -1;ssize_t r=recv(*fd,b,n,MSG_DONTWAIT);return r<0?-1:(int)r;}
+  int available(){if(!sp||*sp<0)return 0;int n=0;ioctl(*sp,FIONREAD,&n);return n;}
+  int read(uint8_t* b,size_t n){if(!sp||*sp<0)return -1;ssize_t r=recv(*sp,b,n,MSG_DONTWAIT);return r<0?-1:(int)r;}
   size_t write(const uint8_t* b,size_t n){
-    if(!fd||*fd<0)return 0;
+    if(!sp||*sp<0)return 0;
     size_t o=0;
-    while(o<n){ssize_t r=send(*fd,b+o,n-o,MSG_NOSIGNAL);if(r<0){if(errno==EAGAIN||errno==EINTR){usleep(100);continue;}break;}o+=r;}
+    while(o<n){ssize_t r=send(*sp,b+o,n-o,MSG_NOSIGNAL);if(r<0){if(errno==EAGAIN||errno==EINTR){usleep(100);continue;}break;}o+=r;}
     return o;
   }
-  void stop(){if(fd&&*fd>=0){close(*fd);*fd=-1;}}
-  void setNoDelay(bool on){if(fd&&*fd>=0){int v=on;setsockopt(*fd,IPPROTO_TCP,TCP_NODELAY,&v,sizeof v);}}
+  int fd()const{return sp?*sp:-1;}
+  void stop(){if(sp&&*sp>=0){close(*sp);*sp=-1;}}
+  void setNoDelay(bool on){if(sp&&*sp>=0){int v=on;setsockopt(*sp,IPPROTO_TCP,TCP_NODELAY,&v,sizeof v);}}
 };
 
 class WiFiServer {

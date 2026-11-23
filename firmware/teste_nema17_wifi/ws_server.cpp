@@ -2,6 +2,16 @@
 // handshake, quadros de texto pequenos (até ~1 KB recebidos), ping/pong e fechamento.
 #include "ws_server.h"
 #include <WiFi.h>
+#include <errno.h>
+#ifdef ESP_PLATFORM
+#include <lwip/sockets.h>
+#else
+#include <sys/socket.h>
+#endif
+
+// Lemos e escrevemos direto no socket (fd), sem WiFiClient::connected()/available()/write():
+// no ESP32 o connected() decide pelo errno global, que pode ter sobrado de outro socket
+// (um pedido HTTP que acabou de fechar), e derrubava o WebSocket à toa.
 
 namespace {
 
@@ -18,13 +28,27 @@ WsHandler onEvent = nullptr;
 Slot slots[WS_MAX_CLIENTS];
 const uint32_t HANDSHAKE_MS = 3000;
 
+// Manda tudo (o socket é bloqueante; send devolve quanto foi). false = erro na conexão.
+bool sendAll(Slot& s, const uint8_t* p, size_t len) {
+  int fd = s.c.fd();
+  uint32_t t0 = millis();
+  while (len) {
+    errno = 0;
+    int r = send(fd, p, len, 0);
+    if (r > 0) { p += r; len -= r; continue; }
+    if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) && millis() - t0 < 2000) { delay(1); continue; }
+    return false;
+  }
+  return true;
+}
+
 void drop(uint8_t i, bool sendClose) {
   Slot& s = slots[i];
   if (s.state == 0) return;
   bool wasOpen = s.state == 2;
-  if (sendClose && wasOpen && s.c.connected()) {
+  if (sendClose && wasOpen) {
     const uint8_t fr[2] = { 0x88, 0x00 };
-    s.c.write(fr, 2);
+    send(s.c.fd(), fr, 2, MSG_DONTWAIT);
   }
   s.c.stop();
   s.state = 0;
@@ -41,7 +65,7 @@ bool sendFrame(uint8_t i, uint8_t op, const uint8_t* p, size_t len) {
   if (len < 126) h[hn++] = (uint8_t)len;
   else if (len < 65536) { h[hn++] = 126; h[hn++] = len >> 8; h[hn++] = len & 0xFF; }
   else { h[hn++] = 127; for (int k = 7; k >= 0; k--) h[hn++] = (k < 4) ? (uint8_t)(len >> (8 * k)) : 0; }
-  if (s.c.write(h, hn) != hn || (len && s.c.write(p, len) != len)) { drop(i, false); return false; }
+  if (!sendAll(s, h, hn) || (len && !sendAll(s, p, len))) { drop(i, false); return false; }
   return true;
 }
 
@@ -73,7 +97,7 @@ void handshake(uint8_t i) {
   char key[64];
   if (!headerValue(req, "Sec-WebSocket-Key", key, sizeof(key))) {
     static const char bad[] = "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n";
-    s.c.write((const uint8_t*)bad, sizeof(bad) - 1);
+    sendAll(s, (const uint8_t*)bad, sizeof(bad) - 1);
     drop(i, false);
     return;
   }
@@ -83,7 +107,7 @@ void handshake(uint8_t i) {
   int rn = snprintf(resp, sizeof(resp),
                     "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
                     "Sec-WebSocket-Accept: %s\r\n\r\n", acc);
-  if (s.c.write((const uint8_t*)resp, rn) != (size_t)rn) { drop(i, false); return; }
+  if (!sendAll(s, (const uint8_t*)resp, rn)) { drop(i, false); return; }
   s.state = 2;
   s.n = 0;                                     // o navegador só manda quadros depois da resposta
   if (onEvent) onEvent(i, WS_OPEN, nullptr, 0);
@@ -149,14 +173,13 @@ void wsLoop() {
   for (uint8_t i = 0; i < WS_MAX_CLIENTS; i++) {
     Slot& s = slots[i];
     if (s.state == 0) continue;
-    if (!s.c.connected()) { drop(i, false); continue; }
-    int av = s.c.available();
-    if (av > 0) {
-      size_t room = sizeof(s.buf) - 1 - s.n;
-      if (room == 0) { drop(i, true); continue; }
-      int got = s.c.read(s.buf + s.n, min((size_t)av, room));
-      if (got > 0) s.n += got;
-    }
+    size_t room = sizeof(s.buf) - 1 - s.n;
+    if (room == 0) { drop(i, true); continue; }
+    errno = 0;
+    int got = recv(s.c.fd(), s.buf + s.n, room, MSG_DONTWAIT);
+    if (got > 0) s.n += got;
+    else if (got == 0) { drop(i, false); continue; }                        // o outro lado fechou
+    else if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) { drop(i, false); continue; }
     if (s.state == 1) handshake(i);
     else readFrames(i);
   }

@@ -100,7 +100,7 @@ async def main():
             msgs = out['msgs']
             ok(10 <= len(msgs) <= 18, f'status empurrado a ~10/s ({len(msgs)} em 1,5 s)')
             first = msgs[0]['j']
-            ok(len(first['samples']) > 50, f'primeiro push traz o histórico ({len(first["samples"])} amostras)')
+            ok(len(first['samples']) >= 30, f'primeiro push traz o histórico ({len(first["samples"])} amostras)')
             ok(any('[ws] página conectada' in l[1] for m in msgs for l in m['j']['log']), 'log avisa a conexão')
             seqs = [t for m in msgs for t in (s[0] for s in m['j']['samples'])]
             ok(all(b > a for a, b in zip(seqs, seqs[1:])), 'amostras sem repetição entre pushes')

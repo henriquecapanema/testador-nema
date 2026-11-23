@@ -157,21 +157,22 @@ function startPoll(){if(!pollOn){pollOn=true;poll();}}
 
 // WebSocket na porta 81: o ESP32 empurra o status a cada 100 ms.
 function wsDrop(){                          // fecha e volta ao polling até reconectar
-  const sock=WS.sock,was=WS.open;
+  const sock=WS.sock,was=WS.open&&WS.got;
+  WS.fails=was?0:(WS.fails||0)+1;           // falhou sem receber nada: tenta com menos frequência
   WS.sock=null;WS.open=false;
   if(sock){sock.onopen=sock.onmessage=sock.onclose=sock.onerror=null;try{sock.close();}catch(e){}}
   for(const k in WS.wait)WS.wait[k]({ok:false,error:'conexão caiu'});
   startPoll();
-  setTimeout(wsConnect,was?500:3000);
+  setTimeout(wsConnect,was?500:WS.fails<3?3000:30000);
 }
 function wsConnect(){
   if(WS.sock)return;
   let sock;
   try{sock=new WebSocket('ws://'+location.hostname+':81/');}catch(e){startPoll();return;}
   WS.sock=sock;
-  sock.onopen=()=>{WS.open=true;WS.last=Date.now();sock.send('s|since='+seq+'&lsince='+lseq);};
+  sock.onopen=()=>{WS.open=true;WS.got=false;WS.last=Date.now();sock.send('s|since='+seq+'&lsince='+lseq);};
   sock.onmessage=e=>{
-    WS.last=Date.now();
+    WS.last=Date.now();WS.got=true;WS.fails=0;
     let j;try{j=JSON.parse(e.data);}catch(x){return;}
     if(j.re!==undefined){const f=WS.wait[j.re];if(f)f(j);return;}
     try{onStatus(j);}catch(x){console.error(x);}
