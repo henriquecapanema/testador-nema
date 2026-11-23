@@ -1,4 +1,5 @@
-// web.cpp — endpoints em JSON padronizado ({"ok":true} / {"ok":false,"error":"..."}).
+// web.cpp — página, endpoints em JSON padronizado ({"ok":true} / {"ok":false,"error":"..."})
+// e o WebSocket (porta 81), que empurra o status para a página e recebe os comandos.
 #include "web.h"
 #include "config.h"
 #include "log.h"
@@ -7,6 +8,7 @@
 #include "wifi_net.h"
 #include "ota.h"
 #include "web_page.h"
+#include "ws_server.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ArduinoOTA.h>
@@ -24,11 +26,10 @@ void sendOk() { sendJson(200, "{\"ok\":true}"); }
 
 void sendErr(int code, const char* msg) { sendJson(code, String("{\"ok\":false,\"error\":\"") + msg + "\"}"); }
 
-// /cmd?c=<comando>&v=<p1>&p2=..&p3=..&p4=..
-void handleCmd() {
-  String c = server.arg("c");
-  float v = server.arg("v").toFloat(), p2 = server.arg("p2").toFloat();
-  float p3 = server.arg("p3").toFloat(), p4 = server.arg("p4").toFloat();
+// Executa um comando de movimento/config. Devolve nullptr se deu certo, ou a mensagem
+// de erro (com o código HTTP em code). Usado pelo /cmd e pelo WebSocket.
+const char* runCmd(const String& c, float v, float p2, float p3, float p4, int& code) {
+  code = 400;
   CmdType t;
   if      (c == "goto")      t = C_GOTO;
   else if (c == "move")      t = C_MOVE;
@@ -47,13 +48,24 @@ void handleCmd() {
   else if (c == "stop")      t = C_STOP;
   else if (c == "zero")      t = C_ZERO;
   else if (c == "ena")       t = C_ENA;
-  else { sendErr(400, "comando desconhecido"); return; }
-  if (t == C_RESONANCE && limEn) { sendErr(400, "ressonância bloqueada com batentes ligados"); return; }
-  if (t == C_WAYPOINTS && wpCount == 0) { sendErr(400, "nenhuma trajetória carregada"); return; }
-  if (t == C_ENA && !enaUse) { sendErr(400, "ENA desligado em Sistema"); return; }
+  else return "comando desconhecido";
+  if (t == C_RESONANCE && limEn) return "ressonância bloqueada com batentes ligados";
+  if (t == C_WAYPOINTS && wpCount == 0) return "nenhuma trajetória carregada";
+  if (t == C_ENA && !enaUse) return "ENA desligado em Sistema";
   if (t == C_RAMP) saveRampCfg(v > 0 ? 1 : 0, p2 > 0 ? constrain(p2, 1000.0f, 1e7f) : (float)jerk);
-  if (!sendCmdN(t, v, p2, p3, p4)) { sendErr(503, "fila cheia"); return; }
+  if (!sendCmdN(t, v, p2, p3, p4)) { code = 503; return "fila cheia"; }
   if (t != C_JOG) logPrintf("[web] %s %.2f\n", c.c_str(), v);
+  code = 200;
+  return nullptr;
+}
+
+// /cmd?c=<comando>&v=<p1>&p2=..&p3=..&p4=..
+void handleCmd() {
+  String c = server.arg("c");
+  float v = server.arg("v").toFloat();
+  int code;
+  const char* err = runCmd(c, v, server.arg("p2").toFloat(), server.arg("p3").toFloat(), server.arg("p4").toFloat(), code);
+  if (err) { sendErr(code, err); return; }
   char b[80];
   snprintf(b, sizeof(b), "{\"ok\":true,\"c\":\"%s\",\"v\":%.3f}", c.c_str(), v);
   sendJson(200, b);
@@ -71,7 +83,9 @@ String jsonStr(const String& s) {
   return o + "\"";
 }
 
-void handleStatus() {
+// Monta o JSON de status com o log e as amostras novas desde os cursores, e avança os cursores.
+// Cada conexão (polling HTTP ou WebSocket) tem os seus.
+void buildStatus(String& j, uint32_t& lsince, uint32_t& since) {
   char sub[24];
   subModeStr(sub, sizeof(sub));
   char buf[480];
@@ -85,8 +99,7 @@ void handleStatus() {
            (float)rpm, (float)acc, (int)rampMode, (float)jerk,
            limEn ? "true" : "false", (float)limMin, (float)limMax,
            enaUse ? "true" : "false", enaOn ? "true" : "false", enaInv ? "true" : "false");
-  String j;
-  j.reserve(1024);                          // menos fragmentação do heap no polling contínuo
+  j.reserve(1024);                          // menos fragmentação do heap
   j = buf;
   j += "\"net\":\""; j += staMode ? "sta" : "ap"; j += "\"";
   j += ",\"ssid\":" + jsonStr(staMode ? WiFi.SSID() : String(AP_SSID));
@@ -96,9 +109,9 @@ void handleStatus() {
   j += String(",\"ota\":") + (otaOn ? "true" : "false");
   j += ",\"micro\":" + String(MICROSTEP) + ",\"ratio\":" + String(RATIO, 2) + ",\"rpmMax\":" + String(RPM_MAX, 1);
   j += ",\"up\":" + String(millis()) + ",\"beat\":" + String(millis() - loopBeat);
+  j += ",\"ws\":" + String(wsCount());
 
-  // Linhas novas do log desde ?lsince=N
-  uint32_t lsince = (uint32_t)server.arg("lsince").toInt();
+  // Linhas novas do log desde lsince
   portENTER_CRITICAL(&logMux);
   uint32_t lnow = logSeq;
   portEXIT_CRITICAL(&logMux);
@@ -114,9 +127,9 @@ void handleStatus() {
     j += "[" + String(L.ms) + "," + jsonStr(String(L.txt)) + "]";
   }
   j += "]";
+  lsince = lnow;
 
-  // Amostras novas desde ?since=N (até o buffer inteiro, ~10 s, para recuperar falhas curtas).
-  uint32_t since = (uint32_t)server.arg("since").toInt();
+  // Amostras novas desde since (até o buffer inteiro, ~10 s, para recuperar falhas curtas).
   portENTER_CRITICAL(&ringMux);
   uint32_t seqNow = sampleSeq;
   portEXIT_CRITICAL(&ringMux);
@@ -136,7 +149,74 @@ void handleStatus() {
     j += b;
   }
   j += "]}";
+  since = seqNow;
+}
+
+void handleStatus() {
+  uint32_t lsince = (uint32_t)server.arg("lsince").toInt();
+  uint32_t since = (uint32_t)server.arg("since").toInt();
+  String j;
+  buildStatus(j, lsince, since);
   sendJson(200, j);
+}
+
+// ---------- WebSocket ----------
+// Página → ESP32:  "s|since=N&lsince=M"          de onde continuar (a página já tem até ali)
+//                  "<id>|c=goto&v=90&p2=..."      comando; resposta {"re":<id>,"ok":true,...}
+// ESP32 → página a cada 100 ms: o mesmo JSON do /status, só com o que é novo para essa conexão.
+struct WsCursor { uint32_t lsince = 0, since = 0; bool ready = false; };
+WsCursor wsCur[WS_MAX_CLIENTS];
+const uint32_t WS_PUSH_MS = 100;
+
+// Lê o valor de uma chave numa query "a=1&b=2" (sem decodificar %xx: só números e nomes simples).
+String queryArg(const char* q, const char* key) {
+  size_t kl = strlen(key);
+  for (const char* p = q; *p;) {
+    const char* amp = strchr(p, '&');
+    const char* end = amp ? amp : p + strlen(p);
+    if ((size_t)(end - p) > kl && strncmp(p, key, kl) == 0 && p[kl] == '=') {
+      String v;
+      for (const char* x = p + kl + 1; x < end; x++) v += *x;
+      return v;
+    }
+    p = amp ? amp + 1 : end;
+  }
+  return String();
+}
+
+void onWs(uint8_t c, WsEvent ev, const char* msg, size_t /*len*/) {
+  if (ev == WS_OPEN) { wsCur[c] = WsCursor(); logPrintf("[ws] página conectada (%u)\n", (unsigned)wsCount()); return; }
+  if (ev == WS_CLOSE) return;
+  const char* bar = strchr(msg, '|');
+  if (!bar) return;
+  const char* q = bar + 1;
+  if (msg[0] == 's' && bar == msg + 1) {     // sincronização: só depois dela o ESP32 começa a empurrar
+    wsCur[c].since = (uint32_t)queryArg(q, "since").toInt();
+    wsCur[c].lsince = (uint32_t)queryArg(q, "lsince").toInt();
+    wsCur[c].ready = true;
+    return;
+  }
+  long id = atol(msg);
+  String cmd = queryArg(q, "c");
+  float v = queryArg(q, "v").toFloat();
+  int code;
+  const char* err = runCmd(cmd, v, queryArg(q, "p2").toFloat(), queryArg(q, "p3").toFloat(), queryArg(q, "p4").toFloat(), code);
+  char b[160];
+  int n = err ? snprintf(b, sizeof(b), "{\"re\":%ld,\"ok\":false,\"error\":\"%s\"}", id, err)
+              : snprintf(b, sizeof(b), "{\"re\":%ld,\"ok\":true,\"c\":\"%s\",\"v\":%.3f}", id, cmd.c_str(), v);
+  wsSendText(c, b, n);
+}
+
+void wsPush() {
+  static uint32_t last = 0;
+  if (millis() - last < WS_PUSH_MS) return;
+  last = millis();
+  for (uint8_t c = 0; c < WS_MAX_CLIENTS; c++) {
+    if (!wsConnected(c) || !wsCur[c].ready) continue;
+    String j;
+    buildStatus(j, wsCur[c].lsince, wsCur[c].since);
+    wsSendText(c, j.c_str(), j.length());
+  }
 }
 
 // Busca de redes sem travar: a primeira chamada começa, as seguintes pegam o resultado.
@@ -271,6 +351,8 @@ void handleSafety() {
 void webTask(void*) {
   for (;;) {
     server.handleClient();
+    wsLoop();
+    wsPush();
     if (otaOn) ArduinoOTA.handle();
     if (restartAt && (int32_t)(millis() - restartAt) >= 0) ESP.restart();
     vTaskDelay(1);
@@ -279,13 +361,14 @@ void webTask(void*) {
 
 // Rotas do servidor e tarefa web no núcleo 0 (junto com o Wi-Fi), para não atrapalhar os passos.
 void webBegin() {
-  // Página com ETag: muda a cada gravação do firmware. Se o navegador já tem a
-  // versão atual, o ESP32 responde "304" (sem corpo) em vez de mandar os ~60 KB.
+  // Página comprimida (gzip) com ETag: muda a cada gravação do firmware. Se o navegador
+  // já tem a versão atual, o ESP32 responde "304" (sem corpo) em vez de mandar a página.
   server.on("/", []() {
     if (server.header("If-None-Match") == PAGE_ETAG) { server.send(304); return; }
     server.sendHeader("ETag", PAGE_ETAG);
     server.sendHeader("Cache-Control", "no-cache");   // sempre confere, mas reaproveita se não mudou
-    server.send_P(200, "text/html", PAGE);
+    server.sendHeader("Content-Encoding", "gzip");
+    server.send_P(200, "text/html", (const char*)PAGE_GZ, PAGE_GZ_LEN);
   });
   static const char* hdrs[] = { "If-None-Match" };
   server.collectHeaders(hdrs, 1);
@@ -299,5 +382,6 @@ void webBegin() {
   server.on("/waypoints", HTTP_POST, handleWaypoints);
   server.on("/safety", HTTP_POST, handleSafety);
   server.begin();
+  wsBegin(81, onWs);
   xTaskCreatePinnedToCore(webTask, "web", 8192, nullptr, 1, nullptr, 0);
 }

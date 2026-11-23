@@ -35,11 +35,24 @@ O firmware (`.ino`, `.cpp`, `.h`) é editado direto na pasta `firmware/`.
 Senhas de Wi-Fi e OTA ficam na memória do ESP32 (NVS), configuradas pela página.
 Nenhuma senha vai no código.
 
+## Conexão
+
+A página (porta 80) vem comprimida em gzip, ~38 KB em vez de ~126 KB. Depois de carregada,
+ela abre um WebSocket na porta 81: o ESP32 empurra o status e as amostras do gráfico a cada
+100 ms e recebe os comandos pela mesma conexão. Se o WebSocket cair, a página volta sozinha
+a perguntar por HTTP (`/status`) e reconecta. O tooltip do indicador "Conectado" mostra qual
+dos dois está em uso.
+
 ## Testes
 
 ```sh
 node tests/test_engine.js                     # motor simulado em JS
 F=firmware/teste_nema17_wifi                  # motor do firmware em C++, num relógio simulado
 g++ -std=gnu++17 -w -Itests/harness/stub -I$F tests/harness/harness.cpp $F/motion.cpp $F/log.cpp -o /tmp/harness && /tmp/harness
-python3 tests/ui_test.py                      # interface (precisa de playwright e do build)
+python3 tests/net_test.py                     # firmware no PC com sockets de verdade + Chromium no WebSocket
+python3 tools/build_web.py                    # os dois abaixo usam o dist/previa.html
+python3 tests/ui_test.py                      # interface
+python3 tests/ws_ui_test.py                   # WebSocket da página: push, comandos, queda e reconexão
 ```
+
+Os testes em Python precisam de `playwright` (com o Chromium instalado).

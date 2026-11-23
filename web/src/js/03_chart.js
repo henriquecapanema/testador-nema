@@ -9,7 +9,10 @@ const GAP=0.15;                  // intervalo entre amostras acima disso = burac
 function addSamples(a){
   for(const [t,p,g,v] of a){
     const n=G.t.length;
-    if(n&&t/1000<G.t[n-1]-1){for(const k in G)G[k].length=0;G.marks.length=0;G.steps.length=0;}   // ESP32 reiniciou
+    if(n&&t/1000<=G.t[n-1]){
+      if(t/1000<G.t[n-1]-1){for(const k in G)G[k].length=0;G.marks.length=0;G.steps.length=0;}   // ESP32 reiniciou
+      else continue;                                                                             // repetida (troca de conexão)
+    }
     G.t.push(t/1000);G.p.push(p);G.g.push(g);G.v.push(v);
   }
   const n=G.t.length;

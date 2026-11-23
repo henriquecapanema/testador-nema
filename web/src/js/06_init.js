@@ -26,11 +26,8 @@ try{const t=localStorage.getItem('nemabot.tab');if(t==='sys'||t==='tst'||t==='wi
 
 // ---------- Polling do status ----------
 function setPill(cls,txt,title){const d=$('dot');d.className='pdot '+cls;$('conn').textContent=txt;$('pill').title=title||txt;}
-async function poll(){
-  try{
-    const ac=new AbortController(),to=setTimeout(()=>ac.abort(),1500);
-    const s=await (await fetch('/status?since='+seq+'&lsince='+lseq,{signal:ac.signal,cache:'no-store'})).json();
-    clearTimeout(to);
+// O mesmo JSON chega por dois caminhos: empurrado pelo WebSocket (padrão) ou pelo polling de /status (reserva).
+function onStatus(s){
     seq=s.seq;addSamples(s.samples);draw();
     addLog(s.log||[],s.logSeq);
 
@@ -140,8 +137,49 @@ async function poll(){
     const up='ligado há '+(s.up<120000?Math.round(s.up/1000)+' s':Math.round(s.up/60000)+' min');
     if(s.beat>1000)setPill('err','Motor travado','ESP32 responde, mas o laço do motor está travado há '+(s.beat/1000).toFixed(0)+' s');
     else if(s.seq===0&&s.up>5000)setPill('warn','Sem amostras','Conectado, mas o timer de amostras está parado · '+up);
-    else setPill('ok','Conectado','Conectado · '+up);
-  }catch(e){setPill('err','Offline','Sem resposta do ESP32');}
+    else setPill('ok','Conectado','Conectado por '+(WS.open?'WebSocket':'HTTP (reserva)')+' · '+up);
+}
+
+// Reserva: polling HTTP enquanto o WebSocket não está aberto.
+let pollOn=false;
+async function poll(){
+  if(WS.open){pollOn=false;return;}
+  try{
+    const ac=new AbortController(),to=setTimeout(()=>ac.abort(),1500);
+    const s=await (await fetch('/status?since='+seq+'&lsince='+lseq,{signal:ac.signal,cache:'no-store'})).json();
+    clearTimeout(to);
+    if(!WS.open)onStatus(s);
+  }catch(e){if(!WS.open)setPill('err','Offline','Sem resposta do ESP32');}
+  if(WS.open){pollOn=false;return;}
   setTimeout(poll,100);
 }
-poll();
+function startPoll(){if(!pollOn){pollOn=true;poll();}}
+
+// WebSocket na porta 81: o ESP32 empurra o status a cada 100 ms.
+function wsDrop(){                          // fecha e volta ao polling até reconectar
+  const sock=WS.sock,was=WS.open;
+  WS.sock=null;WS.open=false;
+  if(sock){sock.onopen=sock.onmessage=sock.onclose=sock.onerror=null;try{sock.close();}catch(e){}}
+  for(const k in WS.wait)WS.wait[k]({ok:false,error:'conexão caiu'});
+  startPoll();
+  setTimeout(wsConnect,was?500:3000);
+}
+function wsConnect(){
+  if(WS.sock)return;
+  let sock;
+  try{sock=new WebSocket('ws://'+location.hostname+':81/');}catch(e){startPoll();return;}
+  WS.sock=sock;
+  sock.onopen=()=>{WS.open=true;WS.last=Date.now();sock.send('s|since='+seq+'&lsince='+lseq);};
+  sock.onmessage=e=>{
+    WS.last=Date.now();
+    let j;try{j=JSON.parse(e.data);}catch(x){return;}
+    if(j.re!==undefined){const f=WS.wait[j.re];if(f)f(j);return;}
+    try{onStatus(j);}catch(x){console.error(x);}
+  };
+  sock.onclose=sock.onerror=wsDrop;
+}
+setInterval(()=>{                           // conexão aberta mas muda: considera caída
+  if(WS.open&&Date.now()-WS.last>1500){setPill('err','Offline','Sem dados do ESP32 há '+((Date.now()-WS.last)/1000).toFixed(0)+' s');wsDrop();}
+},500);
+startPoll();
+wsConnect();

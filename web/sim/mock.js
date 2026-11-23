@@ -50,5 +50,29 @@ window.fetch=function(url,opt){
   }
   return Promise.reject(new Error('404'));
 };
+// WebSocket simulado: mesmo protocolo do firmware (ws_server + web.cpp), em cima das rotas acima.
+let wsN=0;
+window.WebSocket=function(url){
+  const ws=this;ws.url=url;ws.readyState=0;wsN++;
+  let since=0,lsince=0,ready=false,mute=false;
+  const emit=d=>{if(ws.readyState===1&&!mute&&ws.onmessage)ws.onmessage({data:d});};
+  setTimeout(()=>{if(ws.readyState!==0)return;ws.readyState=1;if(ws.onopen)ws.onopen();},50);
+  ws.send=msg=>{
+    if(ws.readyState!==1)throw new Error('fechado');
+    const i=msg.indexOf('|'),head=msg.slice(0,i),q=msg.slice(i+1);
+    if(head==='s'){const p=new URLSearchParams(q);since=+p.get('since')||0;lsince=+p.get('lsince')||0;ready=true;return;}
+    window.fetch('/cmd?'+q).then(r=>r.json()).then(j=>emit(JSON.stringify(Object.assign({re:+head},j))));
+  };
+  const timer=setInterval(()=>{
+    if(!ready||ws.readyState!==1||mute)return;
+    window.fetch('/status?since='+since+'&lsince='+lsince).then(r=>r.json()).then(j=>{since=j.seq;lsince=j.logSeq;j.ws=1;emit(JSON.stringify(j));});
+  },100);
+  ws.close=()=>{ws.readyState=3;clearInterval(timer);};
+  // para os testes: derrubar a conexão ou deixá-la muda (aberta, sem dados)
+  ws._kill=()=>{ws.close();if(ws.onclose)ws.onclose({});};
+  ws._mute=()=>{mute=true;};
+  window.__ws=ws;window.__wsN=wsN;
+};
+window.WebSocket.OPEN=1;
 setTimeout(()=>E.cmd('loop',90,0,300),400);
 })();

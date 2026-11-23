@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Monta a interface a partir de web/src e gera:
 
-  firmware/teste_nema17_wifi/web_page.h   a página embutida no ESP32
+  firmware/teste_nema17_wifi/web_page.h   a página embutida no ESP32 (gzip)
   dist/index.html                         a página pura (pode abrir apontando pro ESP32)
   dist/previa.html                        a página com o motor simulado, abre direto no navegador
 
 Uso:  python3 tools/build_web.py
 """
-import pathlib, re
+import gzip, pathlib, re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / 'web' / 'src'
@@ -34,17 +34,20 @@ def check(page: str, js: str) -> None:
         raise SystemExit(f'ids usados no JS que não existem no HTML: {missing}')
     if urls:
         raise SystemExit(f'a página não pode depender de nada externo: {urls}')
-    if ')rawliteral' in page:
-        raise SystemExit('a página contém ")rawliteral", quebraria o web_page.h')
 
 
-def write_header(page: str) -> None:
+def write_header(page: str) -> int:
+    gz = gzip.compress(page.encode(), compresslevel=9, mtime=0)   # mtime=0: mesmo conteúdo, mesmo arquivo
+    rows = [', '.join(f'0x{x:02x}' for x in gz[i:i + 16]) for i in range(0, len(gz), 16)]
     HEADER.write_text(
-        '// web_page.h — a página inteira (HTML + CSS + JS), servida direto da flash.\n'
+        '// web_page.h — a página inteira (HTML + CSS + JS) comprimida em gzip, servida direto da flash.\n'
         '// Sem nada externo: funciona também na rede própria "nemabot", sem internet.\n'
         '// GERADO por tools/build_web.py a partir de web/src. Não edite à mão.\n'
         '#pragma once\n#include <Arduino.h>\n\n'
-        'const char PAGE[] PROGMEM = R"rawliteral(' + page + ')rawliteral";\n')
+        f'// {len(page.encode()):,} bytes de página → {len(gz):,} bytes em gzip\n'
+        'const uint8_t PAGE_GZ[] PROGMEM = {\n  ' + ',\n  '.join(rows) + '\n};\n'
+        'const size_t PAGE_GZ_LEN = sizeof(PAGE_GZ);\n')
+    return len(gz)
 
 
 def write_dist(page: str) -> None:
@@ -62,6 +65,6 @@ def write_dist(page: str) -> None:
 if __name__ == '__main__':
     page, js = build_page()
     check(page, js)
-    write_header(page)
+    gz = write_header(page)
     write_dist(page)
-    print(f'página: {len(page.encode()):,} bytes → {HEADER.relative_to(ROOT)}, dist/index.html, dist/previa.html')
+    print(f'página: {len(page.encode()):,} bytes, {gz:,} em gzip → {HEADER.relative_to(ROOT)}, dist/index.html, dist/previa.html')

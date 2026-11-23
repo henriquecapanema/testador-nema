@@ -28,12 +28,23 @@ function copyText(t){                       // funciona também em http (sem nav
   return new Promise((res,rej)=>{const a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();
     try{document.execCommand('copy')?res():rej();}catch(e){rej(e);}a.remove();});
 }
+// ---------- Comandos: pelo WebSocket quando aberto, senão por HTTP ----------
+const WS={sock:null,open:false,id:0,wait:{},last:0};
+function wsCmd(q){
+  return new Promise(res=>{
+    const id=++WS.id,fail=()=>{delete WS.wait[id];res({ok:false,error:'sem resposta do ESP32'});};
+    const to=setTimeout(fail,4000);
+    WS.wait[id]=j=>{clearTimeout(to);delete WS.wait[id];res(j);};
+    try{WS.sock.send(id+'|'+q);}catch(e){clearTimeout(to);fail();}
+  });
+}
+function cmdApi(q){return WS.open?wsCmd(q):api('/cmd?'+q);}
 const MOVES=['goto','move','loop','sweep','accsweep','resonance','backlash','drift','stiction','waypoints','jog'];
 async function send(c,v,btn,p2,p3,p4){
   if(MOVES.includes(c))resumeLive();       // movimento novo: gráfico volta ao tempo real
-  let u='/cmd?c='+c+'&v='+(v===undefined||v===''?0:v);
-  [p2,p3,p4].forEach((p,i)=>{if(p!==undefined&&p!=='')u+='&p'+(i+2)+'='+p;});
-  const j=await api(u);
+  let q='c='+c+'&v='+(v===undefined||v===''?0:v);
+  [p2,p3,p4].forEach((p,i)=>{if(p!==undefined&&p!=='')q+='&p'+(i+2)+'='+p;});
+  const j=await cmdApi(q);
   if(j.ok){if(btn)pulse(btn);}else toast(j.error||'falha no comando','err');
   return j;
 }

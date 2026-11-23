@@ -5,14 +5,14 @@ function jogStart(dir,btn,e){
   if(jogTimer)return;
   try{btn.setPointerCapture(e.pointerId);}catch(x){}
   jogBtn=btn;btn.classList.add('on-pri');resumeLive();
-  const go=()=>api('/cmd?c=jog&v='+dir+'&p2='+jogScale).then(j=>{if(!j.ok&&jogTimer){jogEnd();toast(j.error||'jog falhou','err');}});
+  const go=()=>cmdApi('c=jog&v='+dir+'&p2='+jogScale).then(j=>{if(!j.ok&&jogTimer){jogEnd();toast(j.error||'jog falhou','err');}});
   go();jogTimer=setInterval(go,150);        // o ESP32 para sozinho se ficar 450 ms sem renovação
 }
 function jogEnd(){
   if(!jogTimer)return;
   clearInterval(jogTimer);jogTimer=null;
   if(jogBtn)jogBtn.classList.remove('on-pri');jogBtn=null;
-  api('/cmd?c=stop');
+  cmdApi('c=stop');
 }
 [['jogL',-1],['jogR',1]].forEach(([id,dir])=>{
   const b=$(id);

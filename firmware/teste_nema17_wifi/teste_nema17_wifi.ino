@@ -51,7 +51,9 @@
 // sem travar. A cada passo ele recalcula a velocidade em direção ao alvo, com rampa.
 // Por isso o alvo pode mudar no meio do movimento (é o que a barra de -360 a 360 faz).
 // O servidor web roda numa tarefa separada no núcleo 0, junto com o Wi-Fi, e só manda
-// comandos para o motor por uma fila.
+// comandos para o motor por uma fila. A página abre um WebSocket (porta 81): o ESP32
+// empurra o status a cada 100 ms e recebe os comandos por ele. Se o WebSocket não
+// conectar, a página volta a perguntar por HTTP (/status), como antes.
 //
 // Arquivos (cada um vira uma aba no Arduino IDE):
 //   config.h            pinos e constantes
@@ -61,7 +63,8 @@
 //   wifi_net.h/.cpp     Wi-Fi salvo e rede própria
 //   ota.h/.cpp          atualização pelo Wi-Fi
 //   web.h/.cpp          servidor e endpoints
-//   web_page.h          a página (HTML/CSS/JS)
+//   ws_server.h/.cpp    WebSocket mínimo (sem biblioteca externa)
+//   web_page.h          a página (HTML/CSS/JS em gzip), gerada por tools/build_web.py
 //   serial_cmd.h/.cpp   comandos do Monitor Serial
 
 #include <WiFi.h>
