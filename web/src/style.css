@@ -296,6 +296,14 @@ hr.sep{border:0;border-top:1px solid var(--border-subtle);margin:16px 0}
 .run .ri b{font-variant-numeric:tabular-nums}
 .run .btn.sm{height:26px;padding:0 8px;font-size:12px}.run .cmp{min-width:86px}
 
+.tinfo-tg{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:12px;padding:9px 12px;border-radius:var(--radius-md);
+  background:transparent;border:1px solid var(--border-subtle);color:var(--text-secondary);font:inherit;font-size:12.5px;cursor:pointer;transition:background .15s,color .15s}
+.tinfo-tg:hover{background:var(--bg-hover);color:var(--text-primary)}
+.tinfo-tg svg{width:14px;height:14px;transition:transform .2s}
+.tinfo-tg[aria-expanded="true"]{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-color:transparent;color:var(--text-primary)}
+.tinfo-tg[aria-expanded="true"] svg{transform:rotate(180deg)}
+.tinfo-tg[aria-expanded="true"]+.tinfo{margin-top:0;border-top-left-radius:0;border-top-right-radius:0;border-top:none}
+.tinfo[hidden]{display:none}
 .tinfo{display:grid;gap:8px;margin-top:12px;padding:12px;border-radius:var(--radius-md);background:var(--bg-base);border:1px solid var(--border-subtle)}
 .tinfo div{display:grid;grid-template-columns:64px 1fr;gap:10px;font-size:12.5px;line-height:1.5;color:var(--text-secondary)}
 .tinfo b{font-size:11px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);padding-top:2px}

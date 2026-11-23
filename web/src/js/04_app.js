@@ -90,6 +90,13 @@ const TINFO={
         'Um movimento parecido com o uso real do braço, com mudanças de sentido e de velocidade.',
         'Confira se ele chega em cada ponto sem engasgar e se, no fim, a saída volta exatamente ao mesmo lugar (use uma marca no eixo).'],
 };
+// Instruções recolhíveis (fechadas por padrão; lembra a escolha)
+function setInfoOpen(on){
+  $('tinfoTg').setAttribute('aria-expanded',String(on));$('tdesc').hidden=!on;
+  try{localStorage.setItem('nemabot.tinfo',on?'1':'0');}catch(e){}
+}
+$('tinfoTg').onclick=()=>setInfoOpen($('tdesc').hidden);
+try{setInfoOpen(localStorage.getItem('nemabot.tinfo')==='1');}catch(e){}
 function renderInfo(k){
   const I=TINFO[k];if(!I){$('tdesc').textContent='';return;}
   $('tdesc').innerHTML='';

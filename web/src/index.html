@@ -121,7 +121,11 @@
       <option value="stiction">Atrito estático</option>
       <option value="waypoints">Trajetória (waypoints)</option>
     </select></label>
-    <div class="tinfo" id="tdesc"></div>
+    <button type="button" class="tinfo-tg" id="tinfoTg" aria-expanded="false" aria-controls="tdesc">
+      <span>Como funciona este teste</span>
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg>
+    </button>
+    <div class="tinfo" id="tdesc" hidden></div>
     <div class="tfields" id="tfields"></div>
     <div id="wpEd" hidden>
       <div class="wphead"><span>Ângulo</span><span>rpm</span><span>Pausa</span><span></span></div>
