@@ -24,11 +24,12 @@
 //   Se uma versão nova travar o Wi-Fi, o OTA some junto: aí é pelo cabo de novo.
 //   Pelo Serial: "o <senha>" define a senha e reinicia.
 //
-// Ligações (a aba "Ligações" da página mostra o diagrama do TB6600 e do TMC2209):
+// Ligações (a aba "Ligações" da página mostra o diagrama do TB6600, do TMC2209 e do SERVO42D):
 //   GPIO 25 -> STEP (TB6600: PUL+)    GPIO 26 -> DIR (TB6600: DIR+)
 //   GPIO 27 -> ENA (TB6600: ENA+ / TMC2209: EN), opcional, ligado em Sistema
 //   GND do ESP32 -> PUL-, DIR-, ENA- do TB6600 (ou GND do TMC2209), e GND da fonte
 // Driver em micropasso 1/8 (TB6600: S1 OFF, S2 ON, S3 OFF).
+// MKS SERVO42D no modo de pulso (CR_vFOC): STP/DIR/EN nos mesmos GPIOs e COM no 3V3.
 //
 // Página: abas Controle (absoluto, relativo, jog, rampa trapezoidal ou curva S),
 // Testes (8 rotinas: endurance, limite de rpm, limite de aceleração, ressonância,

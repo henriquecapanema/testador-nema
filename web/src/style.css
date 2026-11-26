@@ -248,8 +248,8 @@ hr.sep{border:0;border-top:1px solid var(--border-subtle);margin:16px 0}
 .wsvg .dipt{font-size:11px;font-weight:700;fill:#FDE2E2}.wsvg .dipt.sm{font-size:9px;font-weight:600;fill:#FCA5A5}
 .wsvg .dip{transition:y .25s var(--ease)}
 .wire{cursor:pointer;transition:opacity .2s var(--ease)}
-.wire .halo{fill:none;stroke:#09090B;stroke-width:8;stroke-linecap:round;pointer-events:stroke}
-.wire .core{fill:none;stroke-width:3;stroke-linecap:round;transition:stroke-width .15s var(--ease)}
+.wire .halo{fill:none;stroke:#09090B;stroke-width:8;stroke-linecap:round;stroke-linejoin:round;pointer-events:stroke}
+.wire .core{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;transition:stroke-width .15s var(--ease)}
 .wire .flow{fill:none;stroke:rgba(255,255,255,.8);stroke-width:1.6;stroke-linecap:round;stroke-dasharray:1.5 15;animation:flow 1.3s linear infinite;pointer-events:none}
 @keyframes flow{to{stroke-dashoffset:-33}}
 .wire.off .core{stroke-dasharray:5 6;opacity:.45}
@@ -261,6 +261,8 @@ hr.sep{border:0;border-top:1px solid var(--border-subtle);margin:16px 0}
 .wrow i{width:10px;height:10px;border-radius:3px}
 .wrow b{color:var(--text-primary);font-weight:600}
 .wrow .arr{color:var(--text-muted)}
+#svMenu{grid-template-columns:1fr}
+#svMenu .wrow{grid-template-columns:70px 1fr}
 .diprow{display:flex;gap:6px;margin-top:14px;padding:12px;border-radius:var(--radius-md);background:#2A0E10;border:1px solid #5B1A1E}
 .dsw{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
 .dsw span{position:relative;width:20px;height:40px;border-radius:4px;background:#5B1418}

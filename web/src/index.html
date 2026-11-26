@@ -231,7 +231,7 @@
 <main id="tab-wire" hidden><div class="wgrid">
   <section class="card">
     <div class="ch"><span class="ct">Ligações · <span id="wname">TB6600</span></span>
-      <div class="seg" id="dseg"><button data-d="tb6600">TB6600</button><button data-d="tmc2209">TMC2209</button></div></div>
+      <div class="seg" id="dseg"><button data-d="tb6600">TB6600</button><button data-d="tmc2209">TMC2209</button><button data-d="servo42d">SERVO42D</button></div></div>
     <div class="wdiag" id="wdiag"></div><div class="wtip" id="wtip" hidden></div>
     <div class="wtable" id="wtable"></div>
   </section>
@@ -254,6 +254,17 @@
       </div>
       <div class="sub" id="tmcInfo" style="margin-top:10px;line-height:1.6"></div>
       <div class="sub" style="margin-top:6px">Vref pela fórmula da BTT v1.3 (Vref = I × 1,41). Confira no manual da sua placa antes de ajustar o trimpot.</div>
+    </section>
+    <section class="card" id="cfg-sv" hidden>
+      <div class="ch"><span class="ct">SERVO42D</span><div class="seg" id="busSeg"><button data-b="pulse">Pulso</button><button data-b="can">CAN</button></div></div>
+      <div class="fgrid" style="margin-top:0;grid-template-columns:1fr">
+        <div id="xcvrRow" hidden><span class="lbl">Transceptor</span><div class="seg" id="xcvrSeg"><button data-x="hvd230">SN65HVD230 · 3,3 V</button><button data-x="mcp2551">MCP2551 · 5 V</button></div></div>
+        <div id="svMsRow"><span class="lbl">MStep <span class="sub">micropasso dos pulsos</span></span><label class="field sel"><select id="svMs"></select></label></div>
+        <div><span class="lbl">Ma <span class="sub">corrente máxima no vFOC</span></span><label class="field sel"><select id="svMa"></select></label></div>
+      </div>
+      <div class="wtable" id="svMenu" style="margin-top:10px"></div>
+      <div class="sub" id="svInfo" style="margin-top:10px;line-height:1.5"></div>
+      <div class="sub" id="svNote" style="margin-top:6px;line-height:1.5"></div>
     </section>
     <section class="card">
       <div class="ch"><span class="ct">Micropasso no ESP32</span></div>

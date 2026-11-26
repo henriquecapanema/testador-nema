@@ -1,7 +1,7 @@
 # testador-nema
 
 Interface para testar os motores NEMA com redução do nemabot. Um ESP32 controla um NEMA 17
-(driver TB6600 ou TMC2209) e serve uma página web pelo Wi-Fi. Pela página dá para mover o motor,
+(driver TB6600, TMC2209 ou MKS SERVO42D no modo de pulso) e serve uma página web pelo Wi-Fi. Pela página dá para mover o motor,
 rodar rotinas de teste, ver o movimento num gráfico ao vivo e atualizar o firmware sem cabo (OTA).
 
 ## Estrutura
@@ -31,6 +31,9 @@ O firmware (`.ino`, `.cpp`, `.h`) é editado direto na pasta `firmware/`.
 | STEP | 25 |
 | DIR  | 26 |
 | ENA  | 27 |
+
+No MKS SERVO42D (modo de pulso, CR_vFOC) os mesmos GPIOs vão em STP, DIR e EN, e o COM
+(anodo comum das entradas) vai no 3V3 do ESP32. A aba Ligações mostra o diagrama e o menu da placa.
 
 Senhas de Wi-Fi e OTA ficam na memória do ESP32 (NVS), configuradas pela página.
 Nenhuma senha vai no código.
