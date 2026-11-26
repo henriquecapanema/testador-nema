@@ -272,8 +272,10 @@ function wireRows(){
 function renderWiring(){
   const box=$('wdiag');box.classList.add('fade');
   setTimeout(()=>{
-    box.innerHTML=wiringSVG();box.classList.remove('fade');
-    $('wtable').innerHTML=wireRows();
+    const arm=WIRE.drv==='braco';
+    box.innerHTML=arm?armSVG():wiringSVG();box.classList.remove('fade');
+    $('wtable').innerHTML=arm?armRows():wireRows();
+    applyArmGrp();
     box.querySelectorAll('.pwrbtn').forEach(g=>g.onclick=()=>{WIRE.pwr=g.dataset.pwr;saveWire();renderWiring();});
     box.querySelectorAll('.wire').forEach(g=>{
       g.addEventListener('mouseenter',e=>{box.classList.add('dim');g.classList.add('hl');const t=$('wtip');t.textContent=g.dataset.label;t.hidden=false;});
@@ -282,8 +284,10 @@ function renderWiring(){
     });
   },120);
   // painel de configuração
-  const tb=WIRE.drv==='tb6600',sv=WIRE.drv==='servo42d';
+  const tb=WIRE.drv==='tb6600',sv=WIRE.drv==='servo42d',arm=WIRE.drv==='braco';
   document.querySelectorAll('#dseg button').forEach(b=>b.classList.toggle('active',b.dataset.d===WIRE.drv));
+  $('tab-wire').querySelector('.wgrid').classList.toggle('arm',arm);$('armBar').hidden=!arm;
+  if(arm){$('wname').textContent='braço completo';renderArmCard();syncMsHint();return;}
   $('cfg-tb').hidden=!tb;$('cfg-tmc').hidden=tb||sv;$('cfg-sv').hidden=!sv;
   const can=sv&&WIRE.svBus==='can';
   $('wname').textContent=tb?'TB6600':sv?(can?'SERVO42D · CAN':'SERVO42D · pulso'):'TMC2209';

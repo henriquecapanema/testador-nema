@@ -35,6 +35,9 @@ O firmware (`.ino`, `.cpp`, `.h`) é editado direto na pasta `firmware/`.
 No MKS SERVO42D (modo de pulso, CR_vFOC) os mesmos GPIOs vão em STP, DIR e EN, e o COM
 (anodo comum das entradas) vai no 3V3 do ESP32. A aba Ligações mostra o diagrama e o menu da placa.
 
+A opção **Braço** da aba Ligações mostra todas as ligações do nemabot: alimentação, ESP32, CAN com as SERVO42D,
+TMC2209 do punho, tela da base e flange, com filtro por sistema e a escolha do motor do J1.
+
 Senhas de Wi-Fi e OTA ficam na memória do ESP32 (NVS), configuradas pela página.
 Nenhuma senha vai no código.
 

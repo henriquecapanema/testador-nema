@@ -311,3 +311,12 @@ hr.sep{border:0;border-top:1px solid var(--border-subtle);margin:16px 0}
 .tinfo b{font-size:11px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);padding-top:2px}
 .tinfo div:nth-child(2) b{color:var(--accent-primary)}
 .tinfo div:nth-child(2) span{color:var(--text-primary)}
+
+/* braço completo */
+.wgrid.arm{grid-template-columns:1fr}.wgrid.arm>.col{display:none}
+.armbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.armbar .chips{display:flex;gap:6px;flex-wrap:wrap}.armbar .chip.active{border-color:var(--border-active);color:var(--text-primary);background:var(--bg-elevated)}
+.wsvg.arm .pin{font-size:13px}.wsvg.arm .pin.small{font-size:11.5px}.wsvg.arm .chips{font-size:12px}.wsvg.arm .bname{font-size:15px}.wsvg.arm .chipt{font-size:12px}
+.wdiag[data-grp] .wire{opacity:.1}
+.wdiag[data-grp="pwr"] .wire.g-pwr,.wdiag[data-grp="can"] .wire.g-can,.wdiag[data-grp="tmc"] .wire.g-tmc,.wdiag[data-grp="tela"] .wire.g-tela,.wdiag[data-grp="flange"] .wire.g-flange,.wdiag[data-grp="sens"] .wire.g-sens{opacity:1}
+.wrow.wgrp{grid-column:1/-1;grid-template-columns:1fr;border-bottom:1px solid var(--border-active);padding-top:12px;color:var(--text-primary)}
