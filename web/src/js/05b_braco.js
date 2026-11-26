@@ -63,7 +63,7 @@ function armSVG(){
   const py=i=>ey+90+i*30;
   const P=n=>[ex+18,py(L.indexOf(n))],PR=n=>[ex+ew-18,py(R.indexOf(n))];
 
-  // ===== CJMCU-2551 =====
+  // ===== transceptor CAN SN65HVD230 (3,3 V) =====
   const cx=850,cy=86,cw=126,ch=150;
   const CP={VCC:[cx,cy+40],GND:[cx,cy+58],CTX:[cx,cy+76],CRX:[cx,cy+94],CANH:[cx+cw,cy+52],CANL:[cx+cw,cy+76]};
 
@@ -93,10 +93,10 @@ function armSVG(){
 
   // ---------- fios: CAN ----------
   use('D32',AC.canH);use('D33',AC.canL);use('EN',AC.tft);
-  W('can_tx','CAN TX · D32 (GPIO 32) → CTX do CJMCU-2551',AC.step,'can',[P('D32'),[540,py(5)],[540,226],[828,226],[828,CP.CTX[1]],CP.CTX],{sig:1});
-  W('can_rx','CAN RX · CRX do CJMCU-2551 → divisor 1 kΩ / 2 kΩ → D33 (a saída do MCP2551 vai a 5 V)',AC.dir,'can',[P('D33'),[532,py(6)],[532,218],[820,218],[820,CP.CRX[1]],CP.CRX],{sig:1});
-  W('can_vcc','5 V do step-down → VCC do CJMCU-2551 (ele é de 5 V)',AC.v5,'can',[[460,585],[460,206],[812,206],[812,CP.VCC[1]],CP.VCC],{});
-  W('can_gnd','GND → GND do CJMCU-2551',AC.gnd,'can',[[GX,GTOP],[GX,GTOP],[804,GTOP],[804,CP.GND[1]],CP.GND],{});
+  W('can_tx','CAN TX · D32 (GPIO 32) → CTX do SN65HVD230',AC.step,'can',[P('D32'),[540,py(5)],[540,226],[828,226],[828,CP.CTX[1]],CP.CTX],{sig:1});
+  W('can_rx','CAN RX · CRX do SN65HVD230 → D33 (GPIO 33)',AC.dir,'can',[P('D33'),[532,py(6)],[532,218],[820,218],[820,CP.CRX[1]],CP.CRX],{sig:1});
+  W('can_vcc','3V3 do ESP32 → 3V3 do SN65HVD230',AC.v33,'can',[PR('3V3'),[894,PR('3V3')[1]],[894,210],[812,210],[812,CP.VCC[1]],CP.VCC],{});
+  W('can_gnd','GND → GND do SN65HVD230',AC.gnd,'can',[[GX,GTOP],[GX,GTOP],[804,GTOP],[804,CP.GND[1]],CP.GND],{});
   const chain=[{p:CP,isT:true}].concat(sv.filter(s=>s.on));
   for(let k=0;k<chain.length-1;k++){
     const a=chain[k],b=chain[k+1];
@@ -192,13 +192,13 @@ function armSVG(){
   // hall
   const hall=(y,t)=>'<g class="board"><rect x="384" y="'+(y-11)+'" width="68" height="22" rx="5" fill="#1A2410" stroke="#4D7C0F"/>'+T(418,y+4,t,'middle','pin on small')+'</g>';
   o+=hall(py(1),'hall J4')+hall(py(2),'hall J5')+(tmcJ1?hall(py(4),'hall J1'):'');
-  // CJMCU-2551
-  o+='<g class="board"><rect x="'+cx+'" y="'+cy+'" width="'+cw+'" height="'+ch+'" rx="8" fill="#5B1F6E" stroke="#8E3FA8"/>';
-  o+='<rect x="'+(cx+38)+'" y="'+(cy+16)+'" width="50" height="22" rx="3" fill="#1A1B22"/>'+T(cx+63,cy+31,'MCP2551','middle','chips');
-  ['VCC','GND','CTX','CRX'].forEach(n=>o+=pad(CP[n][0],CP[n][1])+T(CP[n][0]+10,CP[n][1]+4,n,'','pin on small'));
+  // SN65HVD230
+  o+='<g class="board"><rect x="'+cx+'" y="'+cy+'" width="'+cw+'" height="'+ch+'" rx="8" fill="#1E3A8A" stroke="#3B5BCC"/>';
+  o+='<rect x="'+(cx+38)+'" y="'+(cy+16)+'" width="50" height="22" rx="3" fill="#1A1B22"/>'+T(cx+63,cy+31,'VP230','middle','chips');
+  ['VCC','GND','CTX','CRX'].forEach(n=>o+=pad(CP[n][0],CP[n][1])+T(CP[n][0]+10,CP[n][1]+4,n==='VCC'?'3V3':n,'','pin on small'));
   ['CANH','CANL'].forEach(n=>o+=pad(CP[n][0],CP[n][1])+T(CP[n][0]-10,CP[n][1]+4,n,'end','pin on small'));
-  o+=T(cx+cw/2,cy+122,'CJMCU-2551','middle','bname')+T(cx+cw/2,cy+140,'CAN · 5 V · +120 Ω','middle','chips')+'</g>';
-  let top='<g class="board" pointer-events="none"><rect x="800" y="'+(CP.CRX[1]+16)+'" width="40" height="18" rx="9" fill="#15161C" stroke="'+AC.dir+'"/>'+T(820,CP.CRX[1]+29,'1k/2k','middle','pin on small')+'</g>';
+  o+=T(cx+cw/2,cy+122,'SN65HVD230','middle','bname')+T(cx+cw/2,cy+140,'CAN · 3,3 V · 120 Ω','middle','chips')+'</g>';
+  let top='';
   // SERVO42D
   sv.forEach(s=>{
     const op=s.on?'':' opacity=".28"';
@@ -279,9 +279,9 @@ function armSVG(){
 function armRows(){
   const tmcJ1=ARM.j1==='tmc';
   const g=(t,rows)=>'<div class="wrow wgrp"><b>'+t+'</b></div>'+rows.map(([c,a,b,d])=>'<div class="wrow"><i style="background:'+c+'"></i><b>'+a+'</b><span>'+b+'</span><span class="arr">→</span><span>'+d+'</span></div>').join('');
-  return g('Potência',[[AC.v24,'Entrada','tomada → chave → fusível 5 A','fonte 24 V'],[AC.v24,'Lógica','24 V (antes da emergência)','step-down 5 V → VIN do ESP32 e VCC do CJMCU-2551'],
+  return g('Potência',[[AC.v24,'Entrada','tomada → chave → fusível 5 A','fonte 24 V'],[AC.v24,'Lógica','24 V (antes da emergência)','step-down 5 V → VIN do ESP32'],
       [AC.v24,'24 V_DRV','saída da emergência (NF)','V+ das SERVO42D, VM dos TMC2209, step-down 6 V'],[AC.gnd,'GND comum','fonte V−','tudo (obrigatório no CAN)']])+
-    g('CAN',[[AC.step,'CAN TX','D32 (GPIO 32)','CTX do CJMCU-2551'],[AC.dir,'CAN RX','CRX, por divisor 1 kΩ / 2 kΩ','D33 (GPIO 33)'],
+    g('CAN',[[AC.step,'CAN TX','D32 (GPIO 32)','CTX do SN65HVD230'],[AC.dir,'CAN RX','CRX do SN65HVD230','D33 (GPIO 33)'],[AC.v33,'Transceptor','3V3 / GND do ESP32','3V3 / GND (120 Ω já na placa)'],
       [AC.canH,'Barramento','CANH / CANL do transceptor',(tmcJ1?'':'J1 (01) → ')+'J3 (03) → J2 (02, jumper ON)']])+
     g('Punho (TMC2209)',[[AC.step,'J4','STEP D25 · DIR D26','TMC2209 end. 0 → NEMA 11'],[AC.step,'J5','STEP D13* · DIR D14*','TMC2209 end. 1 → NEMA 11']].concat(tmcJ1?[[AC.step,'J1','STEP D2* · DIR D15* (boot)','TMC2209 end. 2 → 17HS4401']]:[]).concat([
       [AC.ena,'EN comum','D27 (LOW = torque)','EN de todos'],[AC.uart,'UART','TX2 (17) por 1 kΩ + RX2 (16)','PDN de todos (endereço por MS1/MS2)'],[AC.v33,'Lógica','3V3 / GND','VDD / GND'],[AC.v24,'Motor','24 V_DRV (+100 µF)','VM / GND']]))+
