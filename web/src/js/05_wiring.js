@@ -125,8 +125,8 @@ function wiringSVG(){
     o+=T(tx+tw/2,ty+th+44,'motor de 40 mm do kit (ou 17HS6001S + placa CAN MB)','middle','chips');
     o+='</g>';
     const RG=n=>[tx+tw-15,ry(rg.indexOf(n))],LGc=n=>[tx+15,ly(lg.indexOf(n))];
-    W('v24','24 V → V+',C.v24,[f24,RG('V+')],{rpow:70});
-    W('g24','GND da fonte → GND',C.gnd,[fG,RG('GND')],{rpow:40});
+    W('v24','24 V → V+',C.v24,[f24,RG('V+')],{rpow:85,top:1});
+    W('g24','GND da fonte → GND',C.gnd,[fG,RG('GND')],{rpow:55,top:1});
     if(can){
       // ---- transceptor SN65HVD230 à esquerda; os fios do ESP32 passam por cima da placa ----
       const cx=56,cy=150,cw=150,ch=190;
@@ -157,14 +157,14 @@ function wiringSVG(){
       W('tg','GND do ESP32 → GND do transceptor',C.gnd,[P('GND'),TP('GND')],{over:22,col:760});
       if(mcp)W('t5','VIN (5 V) do ESP32 → VCC do transceptor',C.v5,[P('VIN'),TP('VCC')],{over:10,col:748});
       else W('t3','3V3 do ESP32 → 3V3 do transceptor',C.v5,[PR('3V3'),TP('3V3')],{over:10,col:1056,right:1});
-      W('canh','CAN H: transceptor → CAN H da SERVO42D (par trançado)',C.canH,[RP('CANH'),LGc('CAN H')],{sig:1});
-      W('canl','CAN L: transceptor → CAN L da SERVO42D (par trançado)',C.canL,[RP('CANL'),LGc('CAN L')],{sig:1});
+      W('canh','CAN H: transceptor → CAN H da SERVO42D (par trançado)',C.canH,[RP('CANH'),LGc('CAN H')],{sig:1,top:1});
+      W('canl','CAN L: transceptor → CAN L da SERVO42D (par trançado)',C.canL,[RP('CANL'),LGc('CAN L')],{sig:1,top:1});
       if(usb)W('gc','GND da fonte → GND do ESP32 (obrigatório no CAN)',C.gnd,[fG,PR('GND')],{gndR:1});
     }else{
-    W('step','STEP · D25 → STP',C.step,[P('D25'),RG('STP')],{sig:1});
-    W('dir','DIR · D26 → DIR',C.dir,[P('D26'),RG('DIR')],{sig:1});
-    W('ena','EN · D27 → EN'+(ena?' (En = L no menu: LOW = torque)':' (opcional: com En = Hold no menu fica sempre com torque)'),C.ena,[P('D27'),RG('EN')],{sig:1,off:!ena});
-    W('com','3V3 do ESP32 → COM (anodo comum das entradas)',C.v5,[PR('3V3'),RG('COM')],{rin:1});
+    W('step','STEP · D25 → STP',C.step,[P('D25'),RG('STP')],{sig:1,top:1});
+    W('dir','DIR · D26 → DIR',C.dir,[P('D26'),RG('DIR')],{sig:1,top:1});
+    W('ena','EN · D27 → EN'+(ena?' (En = L no menu: LOW = torque)':' (opcional: com En = Hold no menu fica sempre com torque)'),C.ena,[P('D27'),RG('EN')],{sig:1,off:!ena,top:1});
+    W('com','3V3 do ESP32 → COM (anodo comum das entradas)',C.v5,[PR('3V3'),RG('COM')],{rin:70,top:1});
     }
   }else{
     // ---- TMC2209 ----
@@ -207,7 +207,7 @@ function wiringSVG(){
   }
 
   // desenha os fios
-  let wl='';
+  let wl='',wtop='';   // wtop: fios desenhados por cima das placas (saem direto do borne)
   wires.forEach(w=>{
     const [a,b]=w.pts;let d;
     if(w.opt.around){const yb=ey+eh+50,side=w.id==='uart'?1:-1,ex2=b[0]+side*60;
@@ -223,22 +223,23 @@ function wiringSVG(){
       d='M'+a[0]+','+a[1]+' L'+xc+','+a[1]+' L'+xc+','+yl+' L'+b[0]+','+yl+' L'+b[0]+','+b[1];}
     else if(w.opt.gndR){const yb=ey+eh+56,xr=ex+ew+30;   // fonte − → desce → passa por baixo → sobe pela direita → GND direito do ESP32
       d='M'+a[0]+','+a[1]+' L'+a[0]+','+(a[1]-14)+' Q'+a[0]+','+(a[1]-26)+' '+(a[0]+12)+','+(a[1]-26)+' L'+(a[0]+60)+','+(a[1]-26)+' Q'+(a[0]+72)+','+(a[1]-26)+' '+(a[0]+72)+','+(a[1]-14)+' L'+(a[0]+72)+','+(yb-12)+' Q'+(a[0]+72)+','+yb+' '+(a[0]+84)+','+yb+' L'+(xr-12)+','+yb+' Q'+xr+','+yb+' '+xr+','+(yb-12)+' L'+xr+','+(b[1]+12)+' Q'+xr+','+b[1]+' '+(xr-12)+','+b[1]+' L'+b[0]+','+b[1];}
-    else if(w.opt.rin){const yb=ey+eh+50,xr=b[0]+60;   // 3V3 (lado direito do ESP32) → contorna por baixo → entra no borne pela direita
+    else if(w.opt.rin){const yb=ey+eh+50,xr=b[0]+(w.opt.rin>1?w.opt.rin:60);   // 3V3 (lado direito do ESP32) → contorna por baixo → entra no borne pela direita
       d='M'+a[0]+','+a[1]+' C'+(a[0]+50)+','+a[1]+' '+(a[0]+50)+','+yb+' '+(a[0]-20)+','+yb+' L'+(xr+20)+','+yb+' Q'+xr+','+yb+' '+xr+','+(yb-20)+' L'+xr+','+(b[1]+16)+' Q'+xr+','+b[1]+' '+(xr-16)+','+b[1]+' L'+b[0]+','+b[1];}
     else if(w.opt.rpow){const xr=b[0]+w.opt.rpow;   // fonte → sobe → entra no borne pela direita
       d='M'+a[0]+','+a[1]+' L'+a[0]+','+(a[1]-40+w.opt.rpow/4)+' Q'+a[0]+','+(a[1]-60+w.opt.rpow/4)+' '+(a[0]+20)+','+(a[1]-60+w.opt.rpow/4)+' L'+(xr-16)+','+(a[1]-60+w.opt.rpow/4)+' Q'+xr+','+(a[1]-60+w.opt.rpow/4)+' '+xr+','+(a[1]-76+w.opt.rpow/4)+' L'+xr+','+(b[1]+16)+' Q'+xr+','+b[1]+' '+(xr-16)+','+b[1]+' L'+b[0]+','+b[1];}
     else if(w.opt.flat){d='M'+(a[0])+','+(a[1])+' L'+b[0]+','+b[1];}
     else if(w.opt.bend){d='M'+a[0]+','+a[1]+' C'+a[0]+','+(a[1]-w.opt.bend)+' '+(b[0]-w.opt.bend)+','+b[1]+' '+b[0]+','+b[1];}
     else d=curve(a,b);
-    wl+='<g class="wire'+(w.opt.off?' off':'')+'" data-id="'+w.id+'" data-label="'+w.label+'">'+
+    const g='<g class="wire'+(w.opt.off?' off':'')+'" data-id="'+w.id+'" data-label="'+w.label+'">'+
       '<path d="'+d+'" class="halo"/><path d="'+d+'" stroke="'+w.color+'" class="core"/>'+(w.opt.sig&&!w.opt.off?'<path d="'+d+'" class="flow"/>':'')+
       '<circle cx="'+a[0]+'" cy="'+a[1]+'" r="3.2" fill="'+w.color+'"/><circle cx="'+b[0]+'" cy="'+b[1]+'" r="3.2" fill="'+w.color+'"/></g>';
+    if(w.opt.top)wtop+=g;else wl+=g;
   });
   const defs='<defs><linearGradient id="pcb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16203A"/><stop offset="1" stop-color="#0F1628"/></linearGradient>'+
     '<linearGradient id="chip" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3A3E4A"/><stop offset="1" stop-color="#22252E"/></linearGradient>'+
     '<linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2B2E37"/><stop offset="1" stop-color="#1A1C22"/></linearGradient>'+
     '<linearGradient id="tmc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3B2A6B"/><stop offset="1" stop-color="#271B4A"/></linearGradient></defs>';
-  return '<svg viewBox="0 0 1072 620" class="wsvg">'+defs+wl+o+'</svg>';
+  return '<svg viewBox="0 0 1072 620" class="wsvg">'+defs+wl+o+wtop+'</svg>';
 }
 
 function wireRows(){
