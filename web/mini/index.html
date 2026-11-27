@@ -1,0 +1,35 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>nemabot · cérebro</title>
+<style>
+body{margin:0;background:#0b0d10;color:#e6e8eb;font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:420px;margin:0 auto;padding:22px 16px}
+h1{font-size:18px;margin:0 0 4px}p{color:#9aa3ad;margin:0 0 16px;line-height:1.45}
+.c{background:#14181d;border:1px solid #232a32;border-radius:12px;padding:14px;margin-bottom:12px}
+.k{display:flex;justify-content:space-between;padding:3px 0}.k b{font-variant-numeric:tabular-nums}
+button,input{font:inherit;border-radius:8px;border:1px solid #2c343d;padding:10px;width:100%;box-sizing:border-box}
+input{background:#0b0d10;color:#e6e8eb;margin-bottom:8px}button{background:#1f2630;color:#e6e8eb;cursor:pointer}
+#stop{background:#b91c1c;border-color:#dc2626;font-weight:700;font-size:17px;padding:14px}
+code{background:#1f2630;padding:1px 5px;border-radius:4px}#m{min-height:1.2em;color:#fcd34d}
+</style></head><body><main>
+<h1>nemabot · cérebro</h1>
+<p>A interface completa roda no computador: <code>python3 tools/serve.py</code> no repositório testador-nema. Esta página é só a reserva.</p>
+<button id="stop">PARAR</button>
+<div class="c" style="margin-top:12px">
+<div class="k"><span>Posição</span><b id="pos">…</b></div>
+<div class="k"><span>Velocidade</span><b id="rpm">…</b></div>
+<div class="k"><span>Rede</span><b id="net">…</b></div>
+</div>
+<div class="c"><input id="ssid" placeholder="rede Wi-Fi" autocomplete="off"><input id="pass" type="password" placeholder="senha">
+<button id="save">Salvar Wi-Fi e reiniciar</button></div>
+<div id="m"></div>
+</main><script>
+const $=i=>document.getElementById(i),msg=t=>$('m').textContent=t;
+$('stop').onclick=()=>fetch('/cmd?c=stop&v=0').then(r=>r.json()).then(j=>msg(j.ok?'Parando.':j.error),()=>msg('Sem resposta'));
+$('save').onclick=()=>fetch('/wifi',{method:'POST',body:new URLSearchParams({ssid:$('ssid').value,pass:$('pass').value})})
+  .then(r=>r.json()).then(j=>msg(j.ok?'Salvo. Reiniciando…':j.error),()=>msg('Sem resposta'));
+let s=0,l=0;
+(function tick(){fetch('/status?since='+s+'&lsince='+l).then(r=>r.json()).then(j=>{
+  s=j.seq;l=j.logSeq;$('pos').textContent=j.pos.toFixed(2)+'°';$('rpm').textContent=j.rpm.toFixed(1)+' rpm'+(j.moving?' · movendo':'');
+  $('net').textContent=(j.net==='sta'?j.ssid:'AP “nemabot”')+' · '+j.ip;},()=>$('net').textContent='sem resposta').finally(()=>setTimeout(tick,1000));})();
+</script></body></html>

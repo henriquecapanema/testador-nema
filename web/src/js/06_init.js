@@ -121,6 +121,7 @@ function onStatus(s){
     // wi-fi e OTA
     const sta=s.net==='sta';
     curSsid=sta?s.ssid:'';
+    $('espBadge').className='badge ok';
     const nb=$('netBadge');nb.className='badge '+(sta?'ok':'warn');nb.textContent=sta?'Conectado':'Modo AP';
     const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
     $('netinfo').innerHTML=sta
@@ -137,7 +138,7 @@ function onStatus(s){
     const up='ligado há '+(s.up<120000?Math.round(s.up/1000)+' s':Math.round(s.up/60000)+' min');
     if(s.beat>1000)setPill('err','Motor travado','ESP32 responde, mas o laço do motor está travado há '+(s.beat/1000).toFixed(0)+' s');
     else if(s.seq===0&&s.up>5000)setPill('warn','Sem amostras','Conectado, mas o timer de amostras está parado · '+up);
-    else setPill('ok','Conectado','Conectado por '+(WS.open?'WebSocket':'HTTP (reserva)')+' · '+up);
+    else setPill('ok','Conectado','Conectado a '+ESP+' por '+(WS.open?'WebSocket':'HTTP (reserva)')+' · '+up);
 }
 
 // Reserva: polling HTTP enquanto o WebSocket não está aberto.
@@ -146,10 +147,10 @@ async function poll(){
   if(WS.open){pollOn=false;return;}
   try{
     const ac=new AbortController(),to=setTimeout(()=>ac.abort(),1500);
-    const s=await (await fetch('/status?since='+seq+'&lsince='+lseq,{signal:ac.signal,cache:'no-store'})).json();
+    const s=await (await fetch(espUrl('/status?since='+seq+'&lsince='+lseq),{signal:ac.signal,cache:'no-store'})).json();
     clearTimeout(to);
     if(!WS.open)onStatus(s);
-  }catch(e){if(!WS.open)setPill('err','Offline','Sem resposta do ESP32');}
+  }catch(e){if(!WS.open){$('espBadge').className='badge warn';}if(!WS.open)setPill('err','Offline','Sem resposta do ESP32 em '+ESP+' (troque o endereço em Sistema → Robô)');}
   if(WS.open){pollOn=false;return;}
   setTimeout(poll,100);
 }
@@ -168,7 +169,7 @@ function wsDrop(){                          // fecha e volta ao polling até rec
 function wsConnect(){
   if(WS.sock)return;
   let sock;
-  try{sock=new WebSocket('ws://'+location.hostname+':81/');}catch(e){startPoll();return;}
+  try{sock=new WebSocket('ws://'+ESP.replace(/:\d+$/,'')+':81/');}catch(e){startPoll();return;}
   WS.sock=sock;
   sock.onopen=()=>{WS.open=true;WS.got=false;WS.last=Date.now();sock.send('s|since='+seq+'&lsince='+lseq);};
   sock.onmessage=e=>{

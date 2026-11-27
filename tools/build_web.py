@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 """Monta a interface a partir de web/src e gera:
 
-  firmware/teste_nema17_wifi/web_page.h   a página embutida no ESP32 (gzip)
-  dist/index.html                         a página pura (pode abrir apontando pro ESP32)
-  dist/previa.html                        a página com o motor simulado, abre direto no navegador
+  dist/index.html                         a interface completa, que roda no computador e fala com o ESP32
+  dist/previa.html                        a mesma interface com o motor simulado, abre direto no navegador
+  firmware/teste_nema17_wifi/web_page.h   o que vai na flash do ESP32 (gzip): por padrão só a página
+                                          de reserva (web/mini/index.html, ~2 KB); com --embutir, a completa
 
-Uso:  python3 tools/build_web.py
+Uso:  python3 tools/build_web.py [--embutir]
+No dia a dia nem precisa rodar: tools/serve.py monta a interface a cada recarga do navegador.
 """
-import gzip, pathlib, re
+import gzip, pathlib, re, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / 'web' / 'src'
 SIM = ROOT / 'web' / 'sim'
 DIST = ROOT / 'dist'
 HEADER = ROOT / 'firmware' / 'teste_nema17_wifi' / 'web_page.h'
+MINI = ROOT / 'web' / 'mini' / 'index.html'
 
 
 def build_page() -> str:
@@ -36,11 +39,11 @@ def check(page: str, js: str) -> None:
         raise SystemExit(f'a página não pode depender de nada externo: {urls}')
 
 
-def write_header(page: str) -> int:
+def write_header(page: str, what: str) -> int:
     gz = gzip.compress(page.encode(), compresslevel=9, mtime=0)   # mtime=0: mesmo conteúdo, mesmo arquivo
     rows = [', '.join(f'0x{x:02x}' for x in gz[i:i + 16]) for i in range(0, len(gz), 16)]
     HEADER.write_text(
-        '// web_page.h — a página inteira (HTML + CSS + JS) comprimida em gzip, servida direto da flash.\n'
+        f'// web_page.h — {what}, comprimida em gzip e servida direto da flash.\n'
         '// Sem nada externo: funciona também na rede própria "nemabot", sem internet.\n'
         '// GERADO por tools/build_web.py a partir de web/src. Não edite à mão.\n'
         '#pragma once\n#include <Arduino.h>\n\n'
@@ -65,6 +68,12 @@ def write_dist(page: str) -> None:
 if __name__ == '__main__':
     page, js = build_page()
     check(page, js)
-    gz = write_header(page)
     write_dist(page)
-    print(f'página: {len(page.encode()):,} bytes, {gz:,} em gzip → {HEADER.relative_to(ROOT)}, dist/index.html, dist/previa.html')
+    print(f'interface: {len(page.encode()):,} bytes → dist/index.html, dist/previa.html')
+    if '--embutir' in sys.argv[1:]:
+        flash, what = page, 'a interface completa (HTML + CSS + JS)'
+    else:
+        flash, what = MINI.read_text(), 'a página de reserva (parar, status, Wi-Fi); a interface completa roda no computador'
+    gz = write_header(flash, what)
+    print(f'flash do ESP32: {len(flash.encode()):,} bytes, {gz:,} em gzip → {HEADER.relative_to(ROOT)}'
+          + (' (interface completa)' if flash is page else ' (página de reserva)'))

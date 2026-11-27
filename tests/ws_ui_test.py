@@ -87,6 +87,20 @@ async def main():
         ok(calls.get('/cmd:ws', 0) >= 4 and calls.get('/cmd:http', 0) == 0, f'renovações do jog vão pelo WebSocket ({calls})')
 
         ok(not errs, f'sem erros de JavaScript {errs}')
+
+        # endereço do ESP32: a interface roda fora dele e aponta para onde mandarem
+        ok(await pg.evaluate('ESP') == 'nemabot.local', 'sem nada configurado, fala com nemabot.local')
+        ok(await pg.evaluate('window.__ws.url') == 'ws://nemabot.local:81/', 'WebSocket vai para nemabot.local:81')
+        pg2 = await b.new_page()
+        await pg2.goto(U + '?esp=10.1.2.3')
+        await pg2.wait_for_timeout(800)
+        ok(await pg2.evaluate('ESP') == '10.1.2.3' and await pg2.evaluate('window.__ws.url') == 'ws://10.1.2.3:81/',
+           '?esp= troca o endereço do WebSocket')
+        ok(await pg2.evaluate("espUrl('/status')") == 'http://10.1.2.3/status', '?esp= troca o endereço do HTTP')
+        await pg2.goto(U)
+        await pg2.wait_for_timeout(300)
+        ok(await pg2.evaluate('ESP') == '10.1.2.3', 'o endereço fica salvo para a próxima vez')
+        ok(await pg2.input_value('#espHost') == '10.1.2.3', 'Sistema → Robô mostra o endereço atual')
         await b.close()
     print('tudo certo' if not fails else f'{fails} falha(s)')
     raise SystemExit(1 if fails else 0)

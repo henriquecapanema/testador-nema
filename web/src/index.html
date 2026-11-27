@@ -279,6 +279,18 @@
 <main id="tab-sys" hidden><div class="sys">
 
   <section class="card">
+    <div class="ch"><span class="ct">Robô <span class="q" tabindex="0" data-tip="Esta interface roda no computador e conversa com o ESP32 pela rede (HTTP na porta 80, WebSocket na 81).&#10;Na rede de casa: nemabot.local. Na rede própria “nemabot”: 192.168.4.1.&#10;Também dá para abrir com ?esp=endereço no fim da URL.">?</span></span><span class="badge" id="espBadge">…</span></div>
+    <div class="fgrid" style="margin-top:0;grid-template-columns:1fr">
+      <div><span class="lbl">Endereço do ESP32</span><label class="field"><input type="text" id="espHost" placeholder="nemabot.local" autocomplete="off" spellcheck="false"></label></div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn pri" id="espSave">Conectar</button>
+      <button class="btn" id="espHome">nemabot.local</button>
+      <button class="btn" id="espAp">192.168.4.1</button>
+    </div>
+  </section>
+
+  <section class="card">
     <div class="ch"><span class="ct">Wi-Fi</span><span class="badge" id="netBadge">…</span></div>
     <div class="netinfo" id="netinfo">…</div>
     <div class="row" style="margin-top:14px"><button class="btn" id="scan">

@@ -1,5 +1,21 @@
 const $=id=>document.getElementById(id);
 
+// ---------- Endereço do ESP32 ----------
+// A interface roda no computador (tools/serve.py ou dist/index.html) e só conversa com o ESP32
+// pela rede: HTTP na porta 80 e WebSocket na 81. Ordem de escolha do endereço:
+// ?esp=... na URL → o último salvo → a própria origem, se a página veio do ESP32 → nemabot.local
+const ESP=(()=>{
+  let h=null;
+  try{h=new URLSearchParams(location.search).get('esp');}catch(e){}
+  if(h){try{localStorage.setItem('nemabot.esp',h);}catch(e){}return h;}
+  try{h=localStorage.getItem('nemabot.esp');}catch(e){}
+  if(h)return h;
+  const l=location.hostname;
+  if(location.protocol==='http:'&&l&&!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(l))return l;
+  return 'nemabot.local';
+})();
+const espUrl=p=>/^https?:/.test(p)?p:'http://'+ESP+p;
+
 // ---------- Utilidades: toasts, carregamento, pulso, API ----------
 function toast(msg,type){
   const c={info:'var(--accent-primary)',ok:'var(--accent-success)',warn:'var(--accent-warning)',err:'var(--accent-danger)'}[type||'info'];
@@ -15,12 +31,12 @@ function pulse(el,cls,ms){cls=cls||'ack';el.classList.remove(cls);void el.offset
 async function api(url,opt){
   const ac=new AbortController(),to=setTimeout(()=>ac.abort(),4000);
   try{
-    const r=await fetch(url,Object.assign({cache:'no-store'},opt||{},{signal:ac.signal}));
+    const r=await fetch(espUrl(url),Object.assign({cache:'no-store'},opt||{},{signal:ac.signal}));
     const txt=await r.text();let j;
     try{j=JSON.parse(txt);}catch(e){j={ok:r.ok,error:r.ok?undefined:txt};}
     if(j.ok===undefined)j.ok=r.ok;
     return j;
-  }catch(e){return {ok:false,error:'sem resposta do ESP32'};}
+  }catch(e){return {ok:false,error:'sem resposta do ESP32 ('+ESP+')'};}
   finally{clearTimeout(to);}
 }
 function copyText(t){                       // funciona também em http (sem navigator.clipboard)
@@ -162,8 +178,22 @@ $('forget').onclick=async()=>{
   }
   clearTimeout(fgT);b.classList.remove('confirm');b.textContent='Esquecer rede';
   const j=await api('/wifi/forget',{method:'POST'});
-  j.ok?toast('Rede esquecida. Reiniciando na rede “nemabot” (192.168.4.1)','ok'):toast(j.error||'Não consegui','err');
+  j.ok?toast('Rede esquecida. Reiniciando na rede “nemabot”: entre nela e use 192.168.4.1 em Sistema → Robô','ok'):toast(j.error||'Não consegui','err');
 };
+
+// ---------- Robô (endereço do ESP32) ----------
+function setEsp(h){
+  h=(h||'').trim().replace(/^[a-z]+:\/\//i,'').replace(/\/.*$/,'');
+  if(!h){toast('Endereço vazio','warn');return;}
+  try{localStorage.setItem('nemabot.esp',h);}catch(e){}
+  const u=new URL(location.href);u.searchParams.delete('esp');
+  location.href=u.toString();                // recarrega já apontando para o novo endereço
+}
+$('espHost').value=ESP;$('espBadge').textContent=ESP;
+$('espSave').onclick=()=>setEsp($('espHost').value);
+$('espHost').onkeydown=e=>{if(e.key==='Enter')setEsp($('espHost').value);};
+$('espHome').onclick=()=>setEsp('nemabot.local');
+$('espAp').onclick=()=>setEsp('192.168.4.1');
 
 // ---------- Motor ----------
 let mPend=null,motorShown=false,netShown=false;

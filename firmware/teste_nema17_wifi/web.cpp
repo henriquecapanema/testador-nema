@@ -1,5 +1,6 @@
-// web.cpp — página, endpoints em JSON padronizado ({"ok":true} / {"ok":false,"error":"..."})
-// e o WebSocket (porta 81), que empurra o status para a página e recebe os comandos.
+// web.cpp — o ESP32 como "cérebro": endpoints em JSON padronizado ({"ok":true} / {"ok":false,"error":"..."})
+// e o WebSocket (porta 81), que empurra o status e recebe os comandos. A interface completa roda no
+// computador (tools/serve.py); aqui fica só uma página mínima de reserva (parar, status, Wi-Fi).
 #include "web.h"
 #include "config.h"
 #include "log.h"
@@ -17,8 +18,11 @@ WebServer server(80);
 const char* PAGE_ETAG = "\"" __DATE__ " " __TIME__ "\"";   // identifica esta gravação
 
 // Respostas padronizadas: {"ok":true,...} ou {"ok":false,"error":"..."}
+// CORS aberto: a interface vem de outra origem (localhost no Mac ou arquivo local). Os POSTs da
+// página usam corpo application/x-www-form-urlencoded, então o navegador não faz pré-voo (OPTIONS).
 void sendJson(int code, const String& body) {
   server.sendHeader("Cache-Control", "no-store");
+  server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(code, "application/json", body);
 }
 
@@ -361,7 +365,7 @@ void webTask(void*) {
 
 // Rotas do servidor e tarefa web no núcleo 0 (junto com o Wi-Fi), para não atrapalhar os passos.
 void webBegin() {
-  // Página comprimida (gzip) com ETag: muda a cada gravação do firmware. Se o navegador
+  // Página de reserva (ou a completa, se gerada com build_web.py --embutir), em gzip e com ETag: muda a cada gravação do firmware. Se o navegador
   // já tem a versão atual, o ESP32 responde "304" (sem corpo) em vez de mandar a página.
   server.on("/", []() {
     if (server.header("If-None-Match") == PAGE_ETAG) { server.send(304); return; }
