@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Monta a interface a partir de web/src e gera:
 
-  dist/index.html                         a interface completa, que roda no computador e fala com o ESP32
+  web/interface.html                      a interface completa, versionada: o nemabot.local baixa ela do GitHub
+  dist/index.html                         a mesma interface, para abrir no computador apontando pro ESP32
   dist/previa.html                        a mesma interface com o motor simulado, abre direto no navegador
-  firmware/teste_nema17_wifi/web_page.h   o que vai na flash do ESP32 (gzip): por padrão só a página
-                                          de reserva (web/mini/index.html, ~2 KB); com --embutir, a completa
+  firmware/teste_nema17_wifi/web_page.h   o que vai na flash do ESP32 (gzip): por padrão o carregador
+                                          com a reserva (web/mini/index.html, ~2 KB); com --embutir, a completa
 
 Uso:  python3 tools/build_web.py [--embutir]
 No dia a dia nem precisa rodar: tools/serve.py monta a interface a cada recarga do navegador.
@@ -17,6 +18,7 @@ SIM = ROOT / 'web' / 'sim'
 DIST = ROOT / 'dist'
 HEADER = ROOT / 'firmware' / 'teste_nema17_wifi' / 'web_page.h'
 MINI = ROOT / 'web' / 'mini' / 'index.html'
+IFACE = ROOT / 'web' / 'interface.html'   # versionada: o nemabot.local baixa esta do GitHub
 
 
 def build_page() -> str:
@@ -54,6 +56,7 @@ def write_header(page: str, what: str) -> int:
 
 
 def write_dist(page: str) -> None:
+    IFACE.write_text(page)
     DIST.mkdir(exist_ok=True)
     (DIST / 'index.html').write_text(page)
     sim = (SIM / 'engine.js').read_text() + '\n' + (SIM / 'mock.js').read_text()
@@ -69,11 +72,11 @@ if __name__ == '__main__':
     page, js = build_page()
     check(page, js)
     write_dist(page)
-    print(f'interface: {len(page.encode()):,} bytes → dist/index.html, dist/previa.html')
+    print(f'interface: {len(page.encode()):,} bytes → web/interface.html (commite junto), dist/index.html, dist/previa.html')
     if '--embutir' in sys.argv[1:]:
         flash, what = page, 'a interface completa (HTML + CSS + JS)'
     else:
-        flash, what = MINI.read_text(), 'a página de reserva (parar, status, Wi-Fi); a interface completa roda no computador'
+        flash, what = MINI.read_text(), 'o carregador: baixa web/interface.html do GitHub (ou usa a última cópia) e, sem nada, mostra a reserva'
     gz = write_header(flash, what)
     print(f'flash do ESP32: {len(flash.encode()):,} bytes, {gz:,} em gzip → {HEADER.relative_to(ROOT)}'
-          + (' (interface completa)' if flash is page else ' (página de reserva)'))
+          + (' (interface completa)' if flash is page else ' (carregador + reserva)'))

@@ -1,6 +1,6 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>nemabot · cérebro</title>
+<title>nemabot</title>
 <style>
 body{margin:0;background:#0b0d10;color:#e6e8eb;font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 main{max-width:420px;margin:0 auto;padding:22px 16px}
@@ -10,10 +10,10 @@ h1{font-size:18px;margin:0 0 4px}p{color:#9aa3ad;margin:0 0 16px;line-height:1.4
 button,input{font:inherit;border-radius:8px;border:1px solid #2c343d;padding:10px;width:100%;box-sizing:border-box}
 input{background:#0b0d10;color:#e6e8eb;margin-bottom:8px}button{background:#1f2630;color:#e6e8eb;cursor:pointer}
 #stop{background:#b91c1c;border-color:#dc2626;font-weight:700;font-size:17px;padding:14px}
-code{background:#1f2630;padding:1px 5px;border-radius:4px}#m{min-height:1.2em;color:#fcd34d}
-</style></head><body><main>
+code{background:#1f2630;padding:1px 5px;border-radius:4px}#ld{color:#9aa3ad;text-align:center;margin-top:40vh}#m{min-height:1.2em;color:#fcd34d}
+</style></head><body><div id="ld">carregando o nemabot…</div><main id="res" hidden>
 <h1>nemabot · cérebro</h1>
-<p>A interface completa roda no computador: <code>python3 tools/serve.py</code> no repositório testador-nema. Esta página é só a reserva.</p>
+<p id="why">Carregando a interface…</p>
 <button id="stop">PARAR</button>
 <div class="c" style="margin-top:12px">
 <div class="k"><span>Posição</span><b id="pos">…</b></div>
@@ -24,6 +24,31 @@ code{background:#1f2630;padding:1px 5px;border-radius:4px}#m{min-height:1.2em;co
 <button id="save">Salvar Wi-Fi e reiniciar</button></div>
 <div id="m"></div>
 </main><script>
+// Carregador: baixa a interface completa do GitHub e abre aqui mesmo (a origem continua sendo o ESP32).
+// Guarda a última cópia boa no navegador: sem internet (ex.: rede própria "nemabot"), usa ela.
+// Sem nenhuma das duas, ou com ?reserva no endereço, mostra esta página de reserva.
+const SRC='https://raw.githubusercontent.com/henriquecapanema/testador-nema/main/web/interface.html';
+const KEY='nemabot.interface';
+const open=h=>{document.open();document.write(h);document.close();};
+function reserva(why){
+  document.getElementById('ld').hidden=true;document.getElementById('res').hidden=false;
+  document.getElementById('why').textContent=why;startRes();
+}
+(async()=>{
+  if(location.search.includes('reserva'))return reserva('Página de reserva.');
+  let cache=null;try{cache=localStorage.getItem(KEY);}catch(e){}
+  try{
+    const ac=new AbortController(),to=setTimeout(()=>ac.abort(),5000);
+    const r=await fetch(SRC+'?t='+Date.now(),{cache:'no-store',signal:ac.signal});clearTimeout(to);
+    const h=await r.text();
+    if(!r.ok||!h.includes('</html>'))throw 0;
+    try{localStorage.setItem(KEY,h);}catch(e){}
+    return open(h);
+  }catch(e){}
+  if(cache)return open(cache);
+  reserva('Sem internet e sem cópia salva da interface. Daqui dá para parar o motor e configurar o Wi-Fi.');
+})();
+function startRes(){
 const $=i=>document.getElementById(i),msg=t=>$('m').textContent=t;
 $('stop').onclick=()=>fetch('/cmd?c=stop&v=0').then(r=>r.json()).then(j=>msg(j.ok?'Parando.':j.error),()=>msg('Sem resposta'));
 $('save').onclick=()=>fetch('/wifi',{method:'POST',body:new URLSearchParams({ssid:$('ssid').value,pass:$('pass').value})})
@@ -32,4 +57,5 @@ let s=0,l=0;
 (function tick(){fetch('/status?since='+s+'&lsince='+l).then(r=>r.json()).then(j=>{
   s=j.seq;l=j.logSeq;$('pos').textContent=j.pos.toFixed(2)+'°';$('rpm').textContent=j.rpm.toFixed(1)+' rpm'+(j.moving?' · movendo':'');
   $('net').textContent=(j.net==='sta'?j.ssid:'AP “nemabot”')+' · '+j.ip;},()=>$('net').textContent='sem resposta').finally(()=>setTimeout(tick,1000));})();
+}
 </script></body></html>

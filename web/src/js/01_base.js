@@ -1,18 +1,17 @@
 const $=id=>document.getElementById(id);
 
 // ---------- Endereço do ESP32 ----------
-// A interface roda no computador (tools/serve.py ou dist/index.html) e só conversa com o ESP32
-// pela rede: HTTP na porta 80 e WebSocket na 81. Ordem de escolha do endereço:
-// ?esp=... na URL → o último salvo → a própria origem, se a página veio do ESP32 → nemabot.local
+// O jeito normal é abrir nemabot.local no navegador: o ESP32 entrega um carregador pequeno, que baixa
+// esta interface do GitHub (web/interface.html) e a abre ali mesmo. Aí o ESP32 é a própria origem.
+// Fora dele (tools/serve.py, arquivo, prévia), o endereço vem de ?esp=..., do último salvo ou nemabot.local.
 const ESP=(()=>{
   let h=null;
   try{h=new URLSearchParams(location.search).get('esp');}catch(e){}
   if(h){try{localStorage.setItem('nemabot.esp',h);}catch(e){}return h;}
-  try{h=localStorage.getItem('nemabot.esp');}catch(e){}
-  if(h)return h;
   const l=location.hostname;
-  if(location.protocol==='http:'&&l&&!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(l))return l;
-  return 'nemabot.local';
+  if(location.protocol==='http:'&&l&&!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(l))return location.host;
+  try{h=localStorage.getItem('nemabot.esp');}catch(e){}
+  return h||'nemabot.local';
 })();
 const espUrl=p=>/^https?:/.test(p)?p:'http://'+ESP+p;
 
